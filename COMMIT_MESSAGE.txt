@@ -1,0 +1,66 @@
+feat(ai): add ai-service micro + multi-provider LLM catalog + AI chat UI
+
+Adds a self-contained ai-service (FastAPI + SQLite + Alembic) plus the
+shared LLM catalog (backend/shared/llm_catalog.py) so the system can
+talk to any major LLM provider by setting a single API key.
+
+Catalog (22 providers, ~100 models, OpenAI-compatible + Anthropic style):
+  - International: OpenAI, Anthropic, Google Gemini, Mistral, xAI Grok,
+    Groq, Cohere, Together AI
+  - China (domestic): DeepSeek, Qwen (DashScope), Zhipu GLM, Moonshot
+    Kimi, Baidu ERNIE, ByteDance Doubao, Tencent Hunyuan, iFlytek Spark,
+    Baichuan, MiniMax
+  - Aggregator / proxy / custom: OpenRouter, SiliconFlow, OneAPI,
+    Custom OpenAI-compatible
+
+config-service (port 8081):
+  - New GET /api/v1/llm/{catalog,providers,providers/{id}/models}
+    endpoints serving the static catalog.
+  - No migration needed (catalog is code).
+
+ai-service (port 8001):
+  - Registers itself with config-service on startup, publishes its
+    schema and sends heartbeats (mirrors email-service).
+  - Endpoints:
+      GET  /ai/catalog, /ai/providers, /ai/providers/{id}/models
+      GET  /ai/config
+      PUT  /ai/config/provider/{id}
+      DELETE /ai/config/provider/{id}
+      PUT  /ai/config/active
+      GET  /ai/conversations
+      POST /ai/conversations
+      GET  /ai/conversations/{id}
+      PATCH /ai/conversations/{id}
+      DELETE /ai/conversations/{id}
+      GET  /ai/conversations/{id}/messages
+      POST /ai/chat               (one-shot)
+      POST /ai/conversations/{id}/chat   (streaming, persisted)
+  - API keys persist via the central config-service (is_secret=true).
+  - Active provider/model persists as plain config-service entries.
+  - LLM client supports OpenAI-compatible chat completions and the
+    Anthropic /v1/messages API (with SSE event normalization).
+  - Streaming uses httpx.AsyncClient.stream with aiter_bytes, so chat
+    tokens flow back to the client as the upstream emits them.
+
+gateway (port 8080):
+  - Added AI_SERVICE_URL setting and /api/v1/ai/* routing.
+  - Added SSE pass-through: when the request advertises
+    Accept: text/event-stream the proxy forwards chunks as they arrive
+    instead of buffering the upstream response.
+
+frontend:
+  - New first-level menu "AI 助手" with sub-entry "AI 会话" at /ai/chat.
+  - GPT-style chat UI: conversation sidebar, message bubbles, model
+    picker grouped by region (国际/国内/中转), settings drawer for
+    per-provider API keys, streaming token rendering, stop button.
+  - Added fetch + ReadableStream SSE client (frontend/src/apps/ai).
+
+scripts:
+  - dev-start.ps1: hardened to auto-detect Python 3.13 without the py
+    launcher; now also starts ai-service on :8001 and injects
+    AI_SERVICE_URL into gateway/.env.
+  - start-ai.ps1: standalone launcher for ai-service only.
+
+docs:
+  - README updated with the new service + provider list.
+  - backend/services/ai-service/README.md added.

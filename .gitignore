@@ -1,0 +1,63 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+*.db
+*.sqlite
+*.sqlite3
+
+# Node
+node_modules/
+.npm
+.yarn
+.pnp.*
+*.log
+dist/
+.vite/
+
+# Local data
+backend/services/email-service/data/attachments/*
+!backend/services/email-service/data/attachments/.gitkeep
+
+# Env
+.env
+.env.local
+.env.*.local
+*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# OS
+desktop.ini
+
+# Misc
+*.pid
+*.seed
+*.tsbuildinfo
+vite.config.d.ts
+vite.config.js
+
+# Backend data
+backend/services/email-service/data/*.db
+backend/services/email-service/data/attachments/*
+!backend/services/email-service/data/attachments/.gitkeep

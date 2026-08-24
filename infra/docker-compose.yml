@@ -1,0 +1,41 @@
+# Local full-stack dev compose.
+# Usage:
+#   docker compose -f infra/docker-compose.yml up --build
+#
+# Requires Docker Desktop with Compose v2. The image builds live from the
+# source trees (no published images yet).
+
+services:
+  email-service:
+    build:
+      context: ../backend/services/email-service
+      dockerfile: ../../infra/docker/email-service.Dockerfile
+    container_name: arknexus-email-service
+    environment:
+      APP_ENV: production
+      API_HOST: 0.0.0.0
+      API_PORT: "8000"
+      SMTP_HOST: 0.0.0.0
+      SMTP_PORT: "1025"
+      EMAIL_DOMAIN: arknexus.local
+      SMTP_RELAY_MODE: console
+    ports:
+      - "8000:8000"
+      - "1025:1025"
+    volumes:
+      - email-data:/app/data
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: ../infra/docker/frontend.Dockerfile
+    container_name: arknexus-frontend
+    environment:
+      VITE_API_BASE: /api/v1
+    ports:
+      - "5173:80"
+    depends_on:
+      - email-service
+
+volumes:
+  email-data:

@@ -1,0 +1,10 @@
+[project]
+name = "arknexus-email-service"
+version = "0.1.0"
+description = "ArkNexus email microservice (temporary mailbox)"
+requires-python = ">=3.11"
+authors = [{ name = "ArkNexus" }]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
