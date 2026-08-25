@@ -61,3 +61,10 @@ vite.config.js
 backend/services/email-service/data/*.db
 backend/services/email-service/data/attachments/*
 !backend/services/email-service/data/attachments/.gitkeep
+
+# Local assistant runtime data (project memory, not source)
+.workbuddy/
+
+# Vite build artifacts
+vite.config.ts.timestamp-*.mjs
+frontend/vite.config.ts.timestamp-*.mjs
