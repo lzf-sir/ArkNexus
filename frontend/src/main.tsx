@@ -8,6 +8,7 @@ import "antd/dist/reset.css";
 import "./index.css";
 import { router } from "./router";
 import { AuthProvider } from "./apps/auth/AuthContext";
+import { appleTheme } from "./theme/appleTheme";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,15 +22,7 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        token: {
-          colorPrimary: "#1677ff",
-          borderRadius: 6,
-        },
-      }}
-    >
+    <ConfigProvider locale={zhCN} theme={appleTheme}>
       <AntApp>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>

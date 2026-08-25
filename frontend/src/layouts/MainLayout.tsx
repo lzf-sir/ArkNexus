@@ -1,42 +1,53 @@
-import { Layout, Menu, theme, Avatar, Space, Dropdown, Tag } from "antd";
+import { Layout, Menu, Avatar, Dropdown, Tag } from "antd";
 import {
-  DashboardOutlined,
-  MailOutlined,
-  RobotOutlined,
-  SettingOutlined,
-  GithubOutlined,
-  LogoutOutlined,
-  UserOutlined,
-  MessageOutlined,
-} from "@ant-design/icons";
+  LayoutDashboard,
+  Mail,
+  Bot,
+  Settings as SettingsIcon,
+  Code2,
+  LogOut,
+  User,
+  MessageSquare,
+  Link2,
+} from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { App as AntApp } from "antd";
 import { useAuth } from "../apps/auth/AuthContext";
 
-const { Header, Sider, Content, Footer: AntDesignFooter } = Layout;
+const { Header, Sider, Content } = Layout;
 
-// First-level menu "AI 助手" with a single sub-entry "AI 会话".
 const navItems = [
-  { key: "/", icon: <DashboardOutlined />, label: <Link to="/">概览</Link> },
+  {
+    key: "/",
+    icon: <LayoutDashboard size={18} strokeWidth={1.8} />,
+    label: <Link to="/">概览</Link>,
+  },
   {
     key: "/ai",
-    icon: <RobotOutlined />,
+    icon: <Bot size={18} strokeWidth={1.8} />,
     label: "AI 助手",
     children: [
       {
         key: "/ai/chat",
-        icon: <MessageOutlined />,
+        icon: <MessageSquare size={16} strokeWidth={1.8} />,
         label: <Link to="/ai/chat">AI 会话</Link>,
       },
     ],
   },
-  { key: "/email", icon: <MailOutlined />, label: <Link to="/email">临时邮箱</Link> },
-  { key: "/settings", icon: <SettingOutlined />, label: <Link to="/settings">系统设置</Link> },
+  {
+    key: "/email",
+    icon: <Mail size={18} strokeWidth={1.8} />,
+    label: <Link to="/email">临时邮箱</Link>,
+  },
+  {
+    key: "/settings",
+    icon: <SettingsIcon size={18} strokeWidth={1.8} />,
+    label: <Link to="/settings">系统设置</Link>,
+  },
 ];
 
 export function MainLayout() {
-  const { token } = theme.useToken();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -56,100 +67,192 @@ export function MainLayout() {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ minHeight: "100vh", background: "#f5f5f7" }}>
+      {/* Frosted glass sidebar */}
       <Sider
+        width={240}
         breakpoint="lg"
-        collapsedWidth={64}
+        collapsedWidth={72}
+        className="glass-sidebar"
         style={{
-          background: token.colorBgContainer,
-          borderRight: `1px solid ${token.colorBorderSecondary}`,
+          borderRight: "1px solid rgba(0,0,0,0.06)",
+          position: "sticky",
+          top: 0,
+          height: "100vh",
+          overflow: "auto",
         }}
       >
+        {/* Brand */}
         <div
           style={{
-            height: 48,
-            margin: 16,
-            fontSize: 18,
-            fontWeight: 600,
-            color: token.colorPrimary,
+            height: 56,
             display: "flex",
             alignItems: "center",
-            gap: 8,
-          }}
-        >
-          <span style={{ fontSize: 22 }}>⛓</span> ArkNexus
-        </div>
-        <Menu
-          mode="inline"
-          selectedKeys={[selectedKey]}
-          items={navItems}
-          style={{ borderRight: 0 }}
-        />
-      </Sider>
-      <Layout>
-        <Header
-          style={{
-            background: token.colorBgContainer,
-            borderBottom: `1px solid ${token.colorBorderSecondary}`,
-            paddingInline: 24,
+            gap: 10,
+            padding: "0 20px",
+            borderBottom: "1px solid rgba(0,0,0,0.04)",
           }}
         >
           <div
             style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              background: "linear-gradient(135deg, #0071e3 0%, #42a1ec 100%)",
               display: "flex",
-              justifyContent: "space-between",
               alignItems: "center",
-              height: "100%",
+              justifyContent: "center",
+              boxShadow: "0 2px 8px rgba(0,113,227,0.25)",
             }}
           >
-            <div style={{ fontSize: 16, fontWeight: 500 }}>个人超级工作台</div>
-            <Space size="large">
-              <Tag color="geekblue" style={{ margin: 0 }}>
-                30 天保留
-              </Tag>
-              <a
-                href="https://github.com/"
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: token.colorTextSecondary, fontSize: 13 }}
+            <Link2 size={18} color="#fff" strokeWidth={2.5} />
+          </div>
+          <span
+            style={{
+              fontSize: 17,
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: "#1d1d1f",
+            }}
+          >
+            ArkNexus
+          </span>
+        </div>
+
+        {/* Navigation */}
+        <Menu
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={navItems}
+          style={{
+            background: "transparent",
+            borderRight: "none",
+            padding: "12px 0",
+          }}
+        />
+      </Sider>
+
+      <Layout style={{ background: "transparent" }}>
+        {/* Frosted glass header */}
+        <Header
+          className="glass-header"
+          style={{
+            position: "sticky",
+            top: 0,
+            zIndex: 100,
+            height: 56,
+            lineHeight: "56px",
+            borderBottom: "1px solid rgba(0,0,0,0.04)",
+            paddingInline: 24,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <span
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              letterSpacing: "-0.01em",
+              color: "#1d1d1f",
+            }}
+          >
+            个人超级工作台
+          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
+            <Tag
+              style={{
+                margin: 0,
+                borderRadius: 980,
+                background: "rgba(0,113,227,0.08)",
+                border: "none",
+                color: "#0071e3",
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "2px 12px",
+              }}
+            >
+              30 天保留
+            </Tag>
+            <a
+              href="https://github.com/"
+              target="_blank"
+              rel="noreferrer"
+              style={{
+                color: "#86868b",
+                fontSize: 13,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                transition: "color 0.2s",
+              }}
+              className="hover:!text-[#0071e3]"
+            >
+              <Code2 size={15} strokeWidth={1.8} />
+              GitHub
+            </a>
+            {user && (
+              <Dropdown
+                menu={{
+                  items: [
+                    {
+                      key: "profile",
+                      icon: <User size={14} strokeWidth={1.8} />,
+                      label: "个人资料",
+                      onClick: () => navigate("/profile"),
+                    },
+                    { type: "divider" },
+                    {
+                      key: "logout",
+                      icon: <LogOut size={14} strokeWidth={1.8} />,
+                      label: "登出",
+                      onClick: onLogout,
+                    },
+                  ],
+                }}
+                trigger={["click"]}
               >
-                <GithubOutlined /> ArkNexus
-              </a>
-              {user && (
-                <Dropdown
-                  menu={{
-                    items: [
-                      {
-                        key: "logout",
-                        icon: <LogoutOutlined />,
-                        label: "登出",
-                        onClick: onLogout,
-                      },
-                    ],
+                <div
+                  style={{
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "4px 8px",
+                    borderRadius: 980,
+                    transition: "background 0.2s",
                   }}
-                  trigger={["click"]}
+                  className="hover:bg-[rgba(0,0,0,0.04)]"
                 >
-                  <Space style={{ cursor: "pointer" }}>
-                    <Avatar
-                      size={28}
-                      icon={<UserOutlined />}
-                      style={{ backgroundColor: token.colorPrimary }}
-                    />
-                    <span style={{ fontSize: 13 }}>
-                      {user.display_name || user.email}
-                    </span>
-                  </Space>
-                </Dropdown>
-              )}
-            </Space>
+                  <Avatar
+                    size={30}
+                    style={{
+                      backgroundColor: "linear-gradient(135deg, #0071e3, #42a1ec)",
+                      background: "linear-gradient(135deg, #0071e3 0%, #42a1ec 100%)",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    {(user.display_name || user.email)[0]?.toUpperCase()}
+                  </Avatar>
+                  <span style={{ fontSize: 13, color: "#1d1d1f", fontWeight: 500 }}>
+                    {user.display_name || user.email}
+                  </span>
+                </div>
+              </Dropdown>
+            )}
           </div>
         </Header>
-        <Content style={{ padding: 24, background: token.colorBgLayout }}>
+
+        {/* Content area */}
+        <Content
+          style={{
+            padding: 24,
+            minHeight: "calc(100vh - 56px)",
+          }}
+        >
           <Outlet />
         </Content>
-        <AntDesignFooter style={{ textAlign: "center", background: token.colorBgContainer }}>
-          ArkNexus · 临时邮箱 + AI 助手 · 数据保留 30 天
-        </AntDesignFooter>
       </Layout>
     </Layout>
   );

@@ -63,7 +63,9 @@ export function DraftDrawer({ open, mailbox, onClose }: Props) {
       destroyOnClose
       extra={
         <Space>
-          <Button onClick={onClose}>取消</Button>
+          <Button onClick={onClose} style={{ borderRadius: 8 }}>
+            取消
+          </Button>
           <Button
             type="primary"
             onClick={async () => {
@@ -75,6 +77,7 @@ export function DraftDrawer({ open, mailbox, onClose }: Props) {
               draftMutation.mutate(form.getFieldsValue());
             }}
             loading={draftMutation.isPending}
+            style={{ borderRadius: 980 }}
           >
             保存草稿
           </Button>
@@ -85,10 +88,10 @@ export function DraftDrawer({ open, mailbox, onClose }: Props) {
         type="info"
         showIcon
         message="本服务仅提供收件能力，不发送邮件。草稿仅供本地记录，请使用你的主邮箱发送。"
-        style={{ marginBottom: 16 }}
+        style={{ marginBottom: 20, borderRadius: 10 }}
       />
       {!mailbox && (
-        <Alert type="warning" showIcon message="请先在左侧选择一个邮箱。" />
+        <Alert type="warning" showIcon message="请先在左侧选择一个邮箱。" style={{ borderRadius: 10 }} />
       )}
       {mailbox && (
         <Form
@@ -96,6 +99,7 @@ export function DraftDrawer({ open, mailbox, onClose }: Props) {
           layout="vertical"
           onFinish={(values) => draftMutation.mutate(values)}
           initialValues={{ to_addresses: [], cc_addresses: [] }}
+          requiredMark={false}
         >
           <Form.Item name="to_addresses" label="收件人（仅记录）">
             <Select
@@ -112,7 +116,7 @@ export function DraftDrawer({ open, mailbox, onClose }: Props) {
             />
           </Form.Item>
           <Form.Item name="subject" label="主题">
-            <Input maxLength={998} placeholder="邮件主题" />
+            <Input maxLength={998} placeholder="邮件主题" style={{ height: 40 }} />
           </Form.Item>
           <Form.Item name="body_text" label="正文">
             <TextArea

@@ -1,8 +1,36 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================
+   Apple Design System — Global Styles
+   ============================================ */
+
 :root {
   color-scheme: light;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif, "Apple Color Emoji",
-    "Segoe UI Emoji";
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
+    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif,
+    "Apple Color Emoji", "Segoe UI Emoji";
+  --apple-blue: #0071e3;
+  --apple-blue-hover: #0077ed;
+  --apple-gray: #86868b;
+  --apple-gray-light: #f5f5f7;
+  --apple-gray-medium: #d2d2d7;
+  --apple-gray-dark: #1d1d1f;
+  --apple-bg: #f5f5f7;
+  --apple-surface: #ffffff;
+  --apple-surface-secondary: #fbfbfd;
+  --apple-border: rgba(0, 0, 0, 0.06);
+  --apple-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.03);
+  --apple-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --apple-shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.08), 0 2px 8px rgba(0, 0, 0, 0.04);
+  --apple-shadow-xl: 0 14px 40px rgba(0, 0, 0, 0.10), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --apple-radius-sm: 8px;
+  --apple-radius-md: 12px;
+  --apple-radius-lg: 16px;
+  --apple-radius-xl: 20px;
+  --apple-radius-2xl: 24px;
+  --apple-transition: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
 html, body, #root {
@@ -11,12 +39,161 @@ html, body, #root {
   padding: 0;
 }
 
+body {
+  background: var(--apple-bg);
+  color: var(--apple-gray-dark);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 #root {
   display: flex;
   flex-direction: column;
 }
 
-/* Make HTML inside emails render reasonably even when stripped. */
+/* ============================================
+   Frosted Glass / Backdrop Blur
+   ============================================ */
+.glass {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.glass-dark {
+  background: rgba(29, 29, 31, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+.glass-sidebar {
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+}
+
+.glass-header {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: saturate(180%) blur(20px);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+}
+
+/* ============================================
+   Apple-style Card
+   ============================================ */
+.apple-card {
+  background: var(--apple-surface);
+  border-radius: var(--apple-radius-lg);
+  box-shadow: var(--apple-shadow-sm);
+  border: 1px solid var(--apple-border);
+  transition: box-shadow 0.3s var(--apple-transition), transform 0.3s var(--apple-transition);
+}
+
+.apple-card:hover {
+  box-shadow: var(--apple-shadow-md);
+}
+
+.apple-card-flat {
+  background: var(--apple-surface);
+  border-radius: var(--apple-radius-lg);
+  border: 1px solid var(--apple-border);
+}
+
+/* ============================================
+   Apple-style Button
+   ============================================ */
+.apple-btn {
+  border-radius: 980px;
+  font-weight: 500;
+  transition: all 0.2s var(--apple-transition);
+}
+
+.apple-btn-primary {
+  background: var(--apple-blue);
+  color: #fff;
+}
+
+.apple-btn-primary:hover {
+  background: var(--apple-blue-hover);
+  transform: scale(1.02);
+}
+
+/* ============================================
+   Typography Hierarchy
+   ============================================ */
+.apple-title {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--apple-gray-dark);
+}
+
+.apple-subtitle {
+  font-weight: 400;
+  color: var(--apple-gray);
+  letter-spacing: -0.01em;
+}
+
+.apple-caption {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--apple-gray);
+  letter-spacing: 0;
+}
+
+/* ============================================
+   Animations
+   ============================================ */
+@keyframes apple-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes apple-scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes apple-slide-in-right {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.apple-fade-in {
+  animation: apple-fade-in 0.4s var(--apple-transition) both;
+}
+
+.apple-scale-in {
+  animation: apple-scale-in 0.3s var(--apple-transition) both;
+}
+
+.apple-slide-in {
+  animation: apple-slide-in-right 0.3s var(--apple-transition) both;
+}
+
+/* ============================================
+   Scrollbar Styling
+   ============================================ */
+.apple-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.apple-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.apple-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 3px;
+}
+
+.apple-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.25);
+}
+
+/* ============================================
+   Email HTML rendering
+   ============================================ */
 .email-html {
   font-family: inherit;
   word-break: break-word;
@@ -24,4 +201,94 @@ html, body, #root {
 .email-html img {
   max-width: 100%;
   height: auto;
+}
+
+/* ============================================
+   Ant Design Overrides
+   ============================================ */
+
+/* Override antd Card to Apple style */
+.ant-card {
+  border-radius: var(--apple-radius-lg) !important;
+  border-color: var(--apple-border) !important;
+  box-shadow: var(--apple-shadow-sm) !important;
+}
+
+.ant-card:hover {
+  box-shadow: var(--apple-shadow-md) !important;
+}
+
+/* Override antd Button to Apple style */
+.ant-btn {
+  border-radius: var(--apple-radius-sm) !important;
+  font-weight: 500 !important;
+  transition: all 0.2s var(--apple-transition) !important;
+}
+
+.ant-btn-primary {
+  background: var(--apple-blue) !important;
+  border-color: var(--apple-blue) !important;
+}
+
+.ant-btn-primary:hover {
+  background: var(--apple-blue-hover) !important;
+  border-color: var(--apple-blue-hover) !important;
+}
+
+/* Override antd Input to Apple style */
+.ant-input,
+.ant-input-affix-wrapper,
+.ant-input-password {
+  border-radius: var(--apple-radius-sm) !important;
+}
+
+/* Override antd Modal to Apple style */
+.ant-modal-content {
+  border-radius: var(--apple-radius-xl) !important;
+  box-shadow: var(--apple-shadow-xl) !important;
+}
+
+/* Override antd Drawer to Apple style */
+.ant-drawer-content {
+  border-radius: var(--apple-radius-xl) 0 0 var(--apple-radius-xl) !important;
+}
+
+.ant-drawer-right .ant-drawer-content {
+  border-radius: var(--apple-radius-xl) 0 0 var(--apple-radius-xl) !important;
+}
+
+/* Override antd Menu for Apple style */
+.ant-menu {
+  border-inline-end: none !important;
+}
+
+.ant-menu-item {
+  border-radius: var(--apple-radius-sm) !important;
+  margin: 2px 8px !important;
+  width: calc(100% - 16px) !important;
+}
+
+/* Override antd Table */
+.ant-table {
+  border-radius: var(--apple-radius-md) !important;
+}
+
+/* Override antd Tag */
+.ant-tag {
+  border-radius: 6px !important;
+}
+
+/* Override antd Segmented */
+.ant-segmented {
+  border-radius: var(--apple-radius-sm) !important;
+  background: var(--apple-gray-light) !important;
+}
+
+/* Smooth focus ring */
+.ant-input:focus,
+.ant-input:focus-within,
+.ant-input-affix-wrapper:focus,
+.ant-input-affix-wrapper:focus-within {
+  border-color: var(--apple-blue) !important;
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12) !important;
 }

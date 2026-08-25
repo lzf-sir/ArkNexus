@@ -2,7 +2,6 @@ import {
   App,
   Button,
   Card,
-  Checkbox,
   Empty,
   Form,
   Input,
@@ -78,7 +77,7 @@ export function EmailInboxPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"inbox" | "drafts">("inbox");
-  const [folder, setFolder] = useState<string>("inbox"); // "inbox" | "trash" | "starred" | folder_id
+  const [folder, setFolder] = useState<string>("inbox");
   const [labelId, setLabelId] = useState<string | null>(null);
 
   const mailboxesQuery = useQuery<Mailbox[]>({
@@ -117,11 +116,9 @@ export function EmailInboxPage() {
     enabled: !!selectedMailboxId && activeTab === "drafts",
   });
 
-  // Folder/label filtering on the client side (after fetch) so we can reuse the per-mailbox list endpoint.
   const isSearching = search.trim().length > 0;
   const rawMessages = isSearching ? (searchQuery.data ?? []) : (messagesQuery.data ?? []);
   const filteredMessages = useMemo(() => {
-    // When searching, the search endpoint already returns ranked results.
     if (isSearching) {
       let msgs = rawMessages.map((h) => ({
         id: h.id,
@@ -129,7 +126,7 @@ export function EmailInboxPage() {
         from_address: h.from_address,
         from_name: h.from_name,
         subject: h.subject,
-        preview: h.preview, // HTML with <mark> highlights
+        preview: h.preview,
         received_at: h.received_at,
         is_read: h.is_read,
         is_starred: h.is_starred,
@@ -247,14 +244,22 @@ export function EmailInboxPage() {
   });
 
   const selectedSet = new Set(selectedMessageIds);
-
   const isTrashFolder = folder === "trash";
 
   return (
-    <div style={{ display: "flex", gap: 16, height: "calc(100vh - 160px)" }}>
+    <div className="apple-fade-in" style={{ display: "flex", gap: 16, height: "calc(100vh - 104px)" }}>
+      {/* Left sidebar: mailboxes + folders */}
       <Card
-        style={{ width: 220, flexShrink: 0, overflow: "auto" }}
-        styles={{ body: { padding: 12 } }}
+        className="apple-card"
+        style={{
+          width: 240,
+          flexShrink: 0,
+          overflow: "auto",
+          borderRadius: 16,
+          padding: "14px 12px",
+          background: "#ffffff",
+        }}
+        styles={{ body: { padding: 0 } }}
       >
         <MailboxSidebar
           mailboxes={mailboxesQuery.data}
@@ -264,7 +269,7 @@ export function EmailInboxPage() {
           onRefresh={() => mailboxesQuery.refetch()}
           isLoading={mailboxesQuery.isFetching}
         />
-        <div style={{ height: 1, background: "#f0f0f0", margin: "12px 0" }} />
+        <div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "14px 4px" }} />
         <FoldersPanel
           selectedFolder={folder}
           selectedLabelId={labelId}
@@ -273,8 +278,16 @@ export function EmailInboxPage() {
         />
       </Card>
 
+      {/* Main panel: messages */}
       <Card
-        style={{ flex: 1, display: "flex", flexDirection: "column" }}
+        className="apple-card"
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 16,
+          overflow: "hidden",
+        }}
         styles={{
           body: {
             padding: 0,
@@ -285,7 +298,8 @@ export function EmailInboxPage() {
           },
         }}
       >
-        <div style={{ padding: 12, borderBottom: "1px solid #f0f0f0" }}>
+        {/* Top bar */}
+        <div style={{ padding: 12, borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
           <TopBar
             mailbox={selectedMailbox}
             onDraft={() => setDraftOpen(true)}
@@ -296,41 +310,41 @@ export function EmailInboxPage() {
           />
         </div>
 
-        <div style={{ padding: "8px 12px", borderBottom: "1px solid #f0f0f0" }}>
-          <Space.Compact style={{ width: "100%" }}>
-            <Input
-              allowClear
-              prefix={<SearchOutlined />}
-              placeholder="搜索主题 / 发件人 / 正文..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ width: "60%" }}
-            />
-            <Segmented
-              value={activeTab}
-              onChange={(v) => setActiveTab(v as "inbox" | "drafts")}
-              options={[
-                { label: "邮件", value: "inbox" },
-                { label: `草稿${draftsQuery.data ? ` (${draftsQuery.data.length})` : ""}`, value: "drafts" },
-              ]}
-            />
-          </Space.Compact>
+        {/* Search + tabs */}
+        <div style={{ padding: "8px 12px", borderBottom: "1px solid rgba(0,0,0,0.04)", display: "flex", gap: 8, alignItems: "center" }}>
+          <Input
+            allowClear
+            prefix={<SearchOutlined style={{ color: "#86868b" }} />}
+            placeholder="搜索主题 / 发件人 / 正文..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ flex: 1, height: 36 }}
+          />
+          <Segmented
+            value={activeTab}
+            onChange={(v) => setActiveTab(v as "inbox" | "drafts")}
+            options={[
+              { label: "邮件", value: "inbox" },
+              { label: `草稿${draftsQuery.data ? ` (${draftsQuery.data.length})` : ""}`, value: "drafts" },
+            ]}
+          />
         </div>
 
+        {/* Bulk action bar */}
         {selectedMessageIds.length > 0 && (
           <div
             style={{
               padding: "8px 16px",
-              borderBottom: "1px solid #f0f0f0",
-              background: "#e6f4ff",
+              borderBottom: "1px solid rgba(0,0,0,0.04)",
+              background: "rgba(0,113,227,0.04)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
             }}
           >
             <Space>
-              <Text strong>{selectedMessageIds.length} 项已选</Text>
-              <Button size="small" onClick={() => setSelectedMessageIds([])}>
+              <Text strong style={{ fontSize: 13 }}>{selectedMessageIds.length} 项已选</Text>
+              <Button size="small" onClick={() => setSelectedMessageIds([])} style={{ borderRadius: 8 }}>
                 取消选择
               </Button>
             </Space>
@@ -344,6 +358,7 @@ export function EmailInboxPage() {
                       selectedMessageIds.forEach((id) => restoreM.mutate(id));
                       setSelectedMessageIds([]);
                     }}
+                    style={{ borderRadius: 8 }}
                   >
                     恢复
                   </Button>
@@ -353,7 +368,7 @@ export function EmailInboxPage() {
                       bulkMutation.mutate({ action: "delete", ids: selectedMessageIds });
                     }}
                   >
-                    <Button size="small" danger icon={<DeleteOutlined />}>
+                    <Button size="small" danger icon={<DeleteOutlined />} style={{ borderRadius: 8 }}>
                       永久删除
                     </Button>
                   </Popconfirm>
@@ -364,24 +379,28 @@ export function EmailInboxPage() {
                     size="small"
                     icon={<StarFilled />}
                     onClick={() => bulkMutation.mutate({ action: "star", ids: selectedMessageIds })}
+                    style={{ borderRadius: 8 }}
                   >
                     星标
                   </Button>
                   <Button
                     size="small"
                     onClick={() => bulkMutation.mutate({ action: "unstar", ids: selectedMessageIds })}
+                    style={{ borderRadius: 8 }}
                   >
                     取消星标
                   </Button>
                   <Button
                     size="small"
                     onClick={() => bulkMutation.mutate({ action: "mark_read", ids: selectedMessageIds })}
+                    style={{ borderRadius: 8 }}
                   >
                     标为已读
                   </Button>
                   <Button
                     size="small"
                     onClick={() => bulkMutation.mutate({ action: "mark_unread", ids: selectedMessageIds })}
+                    style={{ borderRadius: 8 }}
                   >
                     标为未读
                   </Button>
@@ -392,7 +411,7 @@ export function EmailInboxPage() {
                       setSelectedMessageIds([]);
                     }}
                   >
-                    <Button size="small" icon={<DeleteOutlined />}>
+                    <Button size="small" icon={<DeleteOutlined />} style={{ borderRadius: 8 }}>
                       删除
                     </Button>
                   </Popconfirm>
@@ -402,18 +421,19 @@ export function EmailInboxPage() {
           </div>
         )}
 
+        {/* Trash folder notice */}
         {folder === "trash" && activeTab === "inbox" && (
           <div
             style={{
               padding: "6px 12px",
-              borderBottom: "1px solid #f0f0f0",
-              background: "#fafafa",
+              borderBottom: "1px solid rgba(0,0,0,0.04)",
+              background: "#fbfbfd",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}
           >
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: 12, color: "#86868b" }}>
               回收站中的邮件 30 天后将自动清理。
             </Text>
             <Popconfirm
@@ -428,6 +448,7 @@ export function EmailInboxPage() {
                 danger
                 icon={<DeleteOutlined />}
                 loading={emptyTrashM.isPending}
+                style={{ borderRadius: 8 }}
               >
                 清空回收站
               </Button>
@@ -435,7 +456,8 @@ export function EmailInboxPage() {
           </div>
         )}
 
-        <div style={{ flex: 1, overflow: "auto" }}>
+        {/* Message list area */}
+        <div className="apple-scroll" style={{ flex: 1, overflow: "auto" }}>
           {activeTab === "inbox" ? (
             <>
               {!selectedMailboxId && (
@@ -444,7 +466,7 @@ export function EmailInboxPage() {
                 </div>
               )}
               {selectedMailboxId && isSearching && (
-                <div style={{ padding: "8px 16px", color: "#999", fontSize: 12 }}>
+                <div style={{ padding: "8px 16px", color: "#86868b", fontSize: 12 }}>
                   搜索 "{search}" — {messagesQuery.data?.length ?? 0} 个结果
                 </div>
               )}
@@ -472,7 +494,8 @@ export function EmailInboxPage() {
                         ? "还没有星标邮件"
                         : "收件箱为空"
                     }
-                    style={{ marginTop: 32 }}
+                    style={{ marginTop: 48 }}
+                    image={Empty.PRESENTED_IMAGE_SIMPLE}
                   />
                 )}
             </>
@@ -480,7 +503,7 @@ export function EmailInboxPage() {
             <>
               {draftsQuery.isLoading && <Spin />}
               {draftsQuery.data && draftsQuery.data.length === 0 && (
-                <Empty description="暂无草稿" style={{ marginTop: 32 }} />
+                <Empty description="暂无草稿" style={{ marginTop: 48 }} image={Empty.PRESENTED_IMAGE_SIMPLE} />
               )}
               {draftsQuery.data && draftsQuery.data.length > 0 && (
                 <DraftList
@@ -504,6 +527,7 @@ export function EmailInboxPage() {
         </div>
       </Card>
 
+      {/* Drawers & modals */}
       <MessageView
         messageId={selectedMessageId}
         open={viewerOpen}
@@ -529,16 +553,17 @@ export function EmailInboxPage() {
           form={createForm}
           layout="vertical"
           onFinish={(values) => createMutation.mutate(values)}
+          requiredMark={false}
         >
           <Form.Item
             name="local_part"
             label="自定义本地部分（可选）"
-            extra="留空则随机生成"
+            extra={<span style={{ fontSize: 12, color: "#86868b" }}>留空则随机生成</span>}
           >
-            <Input placeholder="例如：my-tag" />
+            <Input placeholder="例如：my-tag" style={{ height: 40 }} />
           </Form.Item>
           <Form.Item name="display_name" label="备注名（可选）">
-            <Input placeholder="仅本地显示" />
+            <Input placeholder="仅本地显示" style={{ height: 40 }} />
           </Form.Item>
         </Form>
       </Modal>
@@ -558,7 +583,7 @@ function DraftList({
   pendingDeleteId?: string;
 }) {
   return (
-    <Space direction="vertical" size={0} style={{ width: "100%", padding: "8px 0" }}>
+    <div style={{ padding: "8px 0" }}>
       {drafts.map((d) => {
         const deleting = pendingDeleteId === d.id;
         const to = d.to_addresses.join(", ");
@@ -566,23 +591,26 @@ function DraftList({
           <div
             key={d.id}
             style={{
-              padding: "12px 16px",
-              borderBottom: "1px solid #f0f0f0",
+              padding: "14px 16px",
+              borderBottom: "1px solid rgba(0,0,0,0.04)",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               gap: 12,
+              transition: "background 0.15s",
             }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(0,0,0,0.02)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <Space size={4}>
-                <FileTextOutlined />
-                <Text strong>{d.subject || "(无主题)"}</Text>
+              <Space size={6}>
+                <FileTextOutlined style={{ color: "#0071e3" }} />
+                <Text strong style={{ fontSize: 14 }}>{d.subject || "(无主题)"}</Text>
               </Space>
-              <div style={{ fontSize: 12, color: "#666", marginTop: 4 }}>
+              <div style={{ fontSize: 12, color: "#86868b", marginTop: 4 }}>
                 收件人：{to || "（未填写）"}
               </div>
-              <div style={{ fontSize: 12, color: "#999", marginTop: 2 }}>
+              <div style={{ fontSize: 11, color: "#86868b", marginTop: 2 }}>
                 {new Date(d.updated_at).toLocaleString()}
               </div>
             </div>
@@ -591,6 +619,7 @@ function DraftList({
                 size="small"
                 icon={<EditOutlined />}
                 onClick={() => onEdit(d)}
+                style={{ borderRadius: 8 }}
               >
                 编辑
               </Button>
@@ -603,12 +632,13 @@ function DraftList({
                   danger
                   icon={<DeleteOutlined />}
                   loading={deleting}
+                  style={{ borderRadius: 8 }}
                 />
               </Popconfirm>
             </Space>
           </div>
         );
       })}
-    </Space>
+    </div>
   );
 }
