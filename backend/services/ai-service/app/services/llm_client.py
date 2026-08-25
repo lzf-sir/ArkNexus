@@ -28,6 +28,7 @@ def _build_openai_payload(
     messages: List[Dict[str, Any]],
     temperature: Optional[float],
     max_tokens: Optional[int],
+    top_p: Optional[float] = None,
     stream: bool,
 ) -> Dict[str, Any]:
     payload: Dict[str, Any] = {"model": model, "messages": messages, "stream": stream}
@@ -35,6 +36,8 @@ def _build_openai_payload(
         payload["temperature"] = float(temperature)
     if max_tokens is not None:
         payload["max_tokens"] = int(max_tokens)
+    if top_p is not None:
+        payload["top_p"] = float(top_p)
     return payload
 
 
@@ -45,6 +48,7 @@ def _build_anthropic_payload(
     temperature: Optional[float],
     max_tokens: Optional[int],
     system: Optional[str],
+    top_p: Optional[float] = None,
     stream: bool,
 ) -> Dict[str, Any]:
     """Anthropic /v1/messages payload shape.
@@ -69,6 +73,8 @@ def _build_anthropic_payload(
         payload["system"] = sys_text
     if temperature is not None:
         payload["temperature"] = float(temperature)
+    if top_p is not None:
+        payload["top_p"] = float(top_p)
     return payload
 
 
@@ -101,6 +107,7 @@ async def chat_completion(
     messages: List[Dict[str, Any]],
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    top_p: Optional[float] = None,
     base_url_override: Optional[str] = None,
     timeout_seconds: int = 120,
 ) -> Dict[str, Any]:
@@ -117,6 +124,7 @@ async def chat_completion(
             temperature=temperature,
             max_tokens=max_tokens,
             system=None,
+            top_p=top_p,
             stream=False,
         )
         headers["anthropic-version"] = "2023-06-01"
@@ -126,6 +134,7 @@ async def chat_completion(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=top_p,
             stream=False,
         )
 
@@ -144,6 +153,7 @@ async def stream_chat_completion(
     messages: List[Dict[str, Any]],
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    top_p: Optional[float] = None,
     base_url_override: Optional[str] = None,
     timeout_seconds: int = 120,
 ) -> AsyncIterator[Dict[str, Any]]:
@@ -166,6 +176,7 @@ async def stream_chat_completion(
             temperature=temperature,
             max_tokens=max_tokens,
             system=None,
+            top_p=top_p,
             stream=True,
         )
         headers["anthropic-version"] = "2023-06-01"
@@ -175,6 +186,7 @@ async def stream_chat_completion(
             messages=messages,
             temperature=temperature,
             max_tokens=max_tokens,
+            top_p=top_p,
             stream=True,
         )
 

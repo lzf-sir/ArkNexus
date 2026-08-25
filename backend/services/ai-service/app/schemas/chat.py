@@ -18,6 +18,7 @@ class ConversationCreate(BaseModel):
     system_prompt: Optional[str] = Field(default=None, max_length=8000)
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1, le=200000)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     first_message: Optional[str] = Field(default=None, max_length=32000)
 
 
@@ -28,6 +29,7 @@ class ConversationUpdate(BaseModel):
     is_archived: Optional[bool] = None
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1, le=200000)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
 
 
 class MessageCreate(BaseModel):
@@ -42,6 +44,7 @@ class ChatRequest(BaseModel):
     messages: List[Dict[str, Any]] = Field(min_length=1)
     temperature: Optional[float] = Field(default=None, ge=0.0, le=2.0)
     max_tokens: Optional[int] = Field(default=None, ge=1, le=200000)
+    top_p: Optional[float] = Field(default=None, ge=0.0, le=1.0)
     stream: Optional[bool] = None
 
 
@@ -68,6 +71,7 @@ class ConversationRead(ORMModel):
     system_prompt: Optional[str] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
+    top_p: Optional[float] = None
     is_pinned: bool
     is_archived: bool
     created_at: datetime

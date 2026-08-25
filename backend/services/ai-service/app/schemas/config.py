@@ -32,8 +32,22 @@ class ActiveSelectionUpdate(ActiveSelection):
     pass
 
 
+class DefaultParams(BaseModel):
+    """Global default generation parameters, configured in 系统设置 → AI 模型配置."""
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    top_p: Optional[float] = None
+
+
+class DefaultParamsUpdate(BaseModel):
+    temperature: Optional[float] = None
+    max_tokens: Optional[int] = None
+    top_p: Optional[float] = None
+
+
 class AIConfigSnapshot(BaseModel):
     """Everything the UI needs to render the settings page."""
     providers: List[Dict[str, Any]]
     provider_configs: List[ProviderConfig]
     active: Optional[ActiveSelection] = None
+    default_params: Optional[DefaultParams] = None

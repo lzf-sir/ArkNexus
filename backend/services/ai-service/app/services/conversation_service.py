@@ -80,6 +80,7 @@ async def create_conversation(
         system_prompt=payload.system_prompt,
         temperature=payload.temperature,
         max_tokens=payload.max_tokens,
+        top_p=payload.top_p,
     )
     session.add(conv)
     await session.flush()
@@ -100,6 +101,7 @@ async def update_conversation(
     is_archived: Optional[bool] = None,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    top_p: Optional[float] = None,
 ) -> Conversation:
     if title is not None:
         conv.title = title
@@ -113,6 +115,8 @@ async def update_conversation(
         conv.temperature = temperature
     if max_tokens is not None:
         conv.max_tokens = max_tokens
+    if top_p is not None:
+        conv.top_p = top_p
     await session.commit()
     await session.refresh(conv)
     return conv

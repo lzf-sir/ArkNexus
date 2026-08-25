@@ -48,9 +48,7 @@ async def one_shot_chat(req: ChatRequest, _user: CurrentUser = CurrentUserDep) -
 async def _sse_generator(req: ChatRequest) -> AsyncIterator[bytes]:
     """SSE-style event stream the frontend can read via fetch + ReadableStream."""
     async for chunk in stream_chat(req):
-        yield f"data: {json.dumps(chunk, ensure_ascii=False)}
-
-".encode("utf-8")
+        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode("utf-8")
     yield "data: [DONE]\n\n".encode("utf-8")
 
 
@@ -84,6 +82,7 @@ async def _stream_persisted(session: AsyncSession, conv, user_text: str) -> Asyn
         messages=provider_messages,
         temperature=conv.temperature,
         max_tokens=conv.max_tokens,
+        top_p=conv.top_p,
         stream=True,
     )
     accumulated: list[str] = []
@@ -97,9 +96,7 @@ async def _stream_persisted(session: AsyncSession, conv, user_text: str) -> Asyn
             final_usage = chunk["usage"]
         elif chunk.get("type") == "finish":
             finish_reason = chunk["finish_reason"]
-        yield f"data: {json.dumps(chunk, ensure_ascii=False)}
-
-".encode("utf-8")
+        yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n".encode("utf-8")
     # Persist the assistant message.
     text = "".join(accumulated)
     saved = await conversation_service.save_assistant_message(
@@ -118,7 +115,5 @@ async def _stream_persisted(session: AsyncSession, conv, user_text: str) -> Asyn
         "assistant_message_id": saved.id,
         "usage": final_usage,
     }
-    yield f"data: {json.dumps(done, ensure_ascii=False)}
-
-".encode("utf-8")
+    yield f"data: {json.dumps(done, ensure_ascii=False)}\n\n".encode("utf-8")
     yield "data: [DONE]\n\n".encode("utf-8")

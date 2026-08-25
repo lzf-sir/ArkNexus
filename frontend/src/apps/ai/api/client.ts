@@ -47,10 +47,17 @@ export interface ActiveSelection {
   model_id: string;
 }
 
+export interface DefaultParams {
+  temperature: number | null;
+  max_tokens: number | null;
+  top_p: number | null;
+}
+
 export interface AIConfigSnapshot {
   providers: ProviderInfo[];
   provider_configs: ProviderConfig[];
   active: ActiveSelection | null;
+  default_params: DefaultParams | null;
 }
 
 export interface MessageRead {
@@ -90,6 +97,7 @@ export interface ConversationRead {
   system_prompt: string | null;
   temperature: number | null;
   max_tokens: number | null;
+  top_p: number | null;
   is_pinned: boolean;
   is_archived: boolean;
   created_at: string;
@@ -104,6 +112,7 @@ export interface ConversationCreatePayload {
   system_prompt?: string;
   temperature?: number;
   max_tokens?: number;
+  top_p?: number;
   first_message?: string;
 }
 
@@ -114,6 +123,7 @@ export interface ConversationUpdatePayload {
   is_archived?: boolean;
   temperature?: number;
   max_tokens?: number;
+  top_p?: number;
 }
 
 // ============================================================
@@ -151,6 +161,15 @@ export async function setActiveSelection(
   payload: ActiveSelection
 ): Promise<ActiveSelection> {
   const { data } = await api.put<ActiveSelection>("/ai/config/active", payload);
+  return data;
+}
+
+export async function saveAIDefaults(payload: {
+  temperature?: number | null;
+  max_tokens?: number | null;
+  top_p?: number | null;
+}): Promise<DefaultParams> {
+  const { data } = await api.put<DefaultParams>("/ai/config/defaults", payload);
   return data;
 }
 

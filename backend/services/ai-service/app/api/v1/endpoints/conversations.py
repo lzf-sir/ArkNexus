@@ -74,6 +74,7 @@ async def update_endpoint(
         is_archived=payload.is_archived,
         temperature=payload.temperature,
         max_tokens=payload.max_tokens,
+        top_p=payload.top_p,
     )
     return ConversationRead.model_validate(conv)
 

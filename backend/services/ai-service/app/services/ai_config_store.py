@@ -30,6 +30,11 @@ KEY_ACTIVE_MODEL = "AI_ACTIVE_MODEL"
 KEY_API_KEY_PREFIX = "AI_API_KEY_"
 KEY_BASE_URL_PREFIX = "AI_BASE_URL_"
 
+# Global default generation parameters (configured from 系统设置 → AI 模型配置).
+KEY_DEFAULT_TEMPERATURE = "AI_DEFAULT_TEMPERATURE"
+KEY_DEFAULT_MAX_TOKENS = "AI_DEFAULT_MAX_TOKENS"
+KEY_DEFAULT_TOP_P = "AI_DEFAULT_TOP_P"
+
 
 def _provider_key(provider_id: str) -> str:
     return f"{KEY_API_KEY_PREFIX}{provider_id.upper()}"
@@ -96,6 +101,30 @@ class AIConfigStore:
                 "group": "ai",
                 "value_type": "string",
                 "default_value": "",
+            },
+            {
+                "key": KEY_DEFAULT_TEMPERATURE,
+                "display_name": "默认 Temperature",
+                "description": "新建对话时使用的默认采样温度 (0-2)",
+                "group": "ai",
+                "value_type": "float",
+                "default_value": "0.7",
+            },
+            {
+                "key": KEY_DEFAULT_MAX_TOKENS,
+                "display_name": "默认 Max Tokens",
+                "description": "新建对话时使用的默认最大生成长度",
+                "group": "ai",
+                "value_type": "int",
+                "default_value": "2048",
+            },
+            {
+                "key": KEY_DEFAULT_TOP_P,
+                "display_name": "默认 Top P",
+                "description": "新建对话时使用的默认 nucleus 采样概率 (0-1)",
+                "group": "ai",
+                "value_type": "float",
+                "default_value": "1.0",
             },
         ]
         try:
@@ -180,6 +209,28 @@ class AIConfigStore:
                 }
             )
         return out
+
+    async def get_default_params(self) -> Dict[str, Optional[float]]:
+        """Global default generation parameters (temperature / max_tokens / top_p)."""
+        temp = await self._get(KEY_DEFAULT_TEMPERATURE)
+        mt = await self._get(KEY_DEFAULT_MAX_TOKENS)
+        tp = await self._get(KEY_DEFAULT_TOP_P)
+        return {
+            "temperature": float(temp) if temp not in (None, "") else None,
+            "max_tokens": int(mt) if mt not in (None, "") else None,
+            "top_p": float(tp) if tp not in (None, "") else None,
+        }
+
+    async def set_default_params(self, params: Dict[str, Optional[float]]) -> None:
+        mapping = {
+            "temperature": KEY_DEFAULT_TEMPERATURE,
+            "max_tokens": KEY_DEFAULT_MAX_TOKENS,
+            "top_p": KEY_DEFAULT_TOP_P,
+        }
+        for field, key in mapping.items():
+            if field in params:
+                value = params[field]
+                await self._set(key, None if value is None else str(value))
 
 
 _instance: Optional[AIConfigStore] = None

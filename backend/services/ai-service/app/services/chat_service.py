@@ -46,6 +46,7 @@ async def chat_once(req: ChatRequest) -> Dict[str, Any]:
         messages=req.messages,
         temperature=req.temperature,
         max_tokens=req.max_tokens,
+        top_p=req.top_p,
         base_url_override=base_url,
         timeout_seconds=settings.upstream_timeout_seconds,
     )
@@ -70,6 +71,7 @@ async def stream_chat(req: ChatRequest) -> AsyncIterator[Dict[str, Any]]:
             messages=req.messages,
             temperature=req.temperature,
             max_tokens=req.max_tokens,
+            top_p=req.top_p,
             base_url_override=base_url,
             timeout_seconds=settings.upstream_timeout_seconds,
         ):
@@ -120,6 +122,7 @@ async def chat_for_conversation(
     *,
     temperature: Optional[float] = None,
     max_tokens: Optional[int] = None,
+    top_p: Optional[float] = None,
 ) -> Dict[str, Any]:
     """Non-streaming chat attached to a conversation: appends both sides and returns the assistant message."""
     # Persist user message
@@ -137,6 +140,7 @@ async def chat_for_conversation(
         messages=provider_messages,
         temperature=temperature if temperature is not None else conv.temperature,
         max_tokens=max_tokens if max_tokens is not None else conv.max_tokens,
+        top_p=top_p if top_p is not None else conv.top_p,
         stream=False,
     )
     result = await chat_once(req)

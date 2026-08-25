@@ -29,6 +29,7 @@ class Conversation(Base):
     # Generation parameters snapshot.
     temperature: Mapped[Optional[float]] = mapped_column(nullable=True)
     max_tokens: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    top_p: Mapped[Optional[float]] = mapped_column(nullable=True)
 
     is_pinned: Mapped[bool] = mapped_column(default=False, nullable=False)
     is_archived: Mapped[bool] = mapped_column(default=False, nullable=False, index=True)

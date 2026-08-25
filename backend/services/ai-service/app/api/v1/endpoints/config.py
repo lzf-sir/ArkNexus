@@ -13,6 +13,8 @@ from app.schemas.config import (
     ActiveSelection,
     ActiveSelectionUpdate,
     AIConfigSnapshot,
+    DefaultParams,
+    DefaultParamsUpdate,
     ProviderConfig,
     ProviderConfigUpdate,
 )
@@ -48,7 +50,12 @@ async def get_ai_config(_user=CurrentUserDep) -> AIConfigSnapshot:
     sel = None
     if active.get("provider_id") and active.get("model_id"):
         sel = ActiveSelection(provider_id=active["provider_id"], model_id=active["model_id"])
-    return AIConfigSnapshot(providers=providers, provider_configs=provider_configs, active=sel)
+    return AIConfigSnapshot(
+        providers=providers,
+        provider_configs=provider_configs,
+        active=sel,
+        default_params=DefaultParams(**(await cfg_store.get_default_params())),
+    )
 
 
 @router.put("/ai/config/provider/{provider_id}", response_model=ProviderConfig, summary="Save a provider API key (or base_url override).")
@@ -76,3 +83,16 @@ async def clear_provider_config(provider_id: str, _user=CurrentUserDep) -> None:
 async def set_active(payload: ActiveSelectionUpdate, _user=CurrentUserDep) -> ActiveSelection:
     await get_config_store().set_active(payload.provider_id, payload.model_id)
     return ActiveSelection(provider_id=payload.provider_id, model_id=payload.model_id)
+
+
+@router.put("/ai/config/defaults", response_model=DefaultParams, summary="Save global default generation parameters.")
+async def update_default_params(payload: DefaultParamsUpdate, _user=CurrentUserDep) -> DefaultParams:
+    params: Dict[str, Optional[float]] = {}
+    if payload.temperature is not None:
+        params["temperature"] = payload.temperature
+    if payload.max_tokens is not None:
+        params["max_tokens"] = payload.max_tokens
+    if payload.top_p is not None:
+        params["top_p"] = payload.top_p
+    await get_config_store().set_default_params(params)
+    return DefaultParams(**(await get_config_store().get_default_params()))
