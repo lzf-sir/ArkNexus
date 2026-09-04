@@ -8,14 +8,10 @@ can have multiple providers linked, and links can be detached/reattached.
 
 from __future__ import annotations
 
-import pytest
-
 from app.core.security import hash_password
 from app.models.oauth import OAuthAccount
 from app.models.user import User
 from app.services import oauth, oauth_link_service
-
-pytestmark = pytest.mark.asyncio
 
 
 async def _make_user(db_session, email: str = "multi@example.com") -> User:
@@ -45,17 +41,25 @@ async def test_user_can_have_multiple_providers_linked(db_session):
         email=user.email,
         display_name="GG",
     )
+    ms_profile = oauth.OAuthUserProfile(
+        provider="microsoft",
+        provider_user_id="ms-003",
+        email=user.email,
+        display_name="MS",
+    )
 
     user1 = await oauth_link_service.find_or_create_user(db_session, gh_profile)
     user2 = await oauth_link_service.find_or_create_user(db_session, gg_profile)
+    user3 = await oauth_link_service.find_or_create_user(db_session, ms_profile)
     assert user1.id == user.id
     assert user2.id == user.id
+    assert user3.id == user.id
 
     from sqlalchemy import select
     stmt = select(OAuthAccount).where(OAuthAccount.user_id == user.id)
     rows = (await db_session.execute(stmt)).scalars().all()
     providers = sorted(r.provider for r in rows)
-    assert providers == ["github", "google"]
+    assert providers == ["github", "google", "microsoft"]
 
 
 async def test_unlink_then_relink(db_session):

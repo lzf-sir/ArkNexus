@@ -36,6 +36,7 @@ async def list_providers() -> dict:
         "providers": [
             {"name": "github", "configured": "github" in providers},
             {"name": "google", "configured": "google" in providers},
+            {"name": "microsoft", "configured": "microsoft" in providers},
         ],
         "configured": providers,
     }

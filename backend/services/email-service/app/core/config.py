@@ -69,6 +69,14 @@ class Settings(BaseSettings):
     oauth_github_client_secret: str = ""
     oauth_google_client_id: str = ""
     oauth_google_client_secret: str = ""
+    # Microsoft Identity Platform v2.0 (Azure AD). `tenant` controls who can sign in:
+    #   "common"        - both personal Microsoft accounts + work/school (default)
+    #   "organizations" - work / school only
+    #   "consumers"     - personal Microsoft accounts only
+    #   "<tenant-id>"   - lock to a single Azure AD tenant
+    oauth_microsoft_client_id: str = ""
+    oauth_microsoft_client_secret: str = ""
+    oauth_microsoft_tenant: str = "common"
     oauth_state_secret: str = "change-me-oauth-state"
 
     # ===== Optional config-service integration =====

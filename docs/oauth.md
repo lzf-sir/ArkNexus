@@ -1,6 +1,6 @@
-# OAuth 登录（GitHub / Google）
+# OAuth 登录（GitHub / Google / Microsoft）
 
-ArkNexus email-service 现在支持 GitHub 与 Google OAuth 登录。设计上保持"轻依赖、可插拔"：要新增 provider（如 GitLab / Gitee），只需在 `app/services/oauth.py` 实现一个 `OAuthProvider` 子类，无需改业务层。
+ArkNexus email-service 支持 GitHub、Google 与 Microsoft 三家 OAuth 登录。设计上保持"轻依赖、可插拔"：要新增 provider（如 GitLab / Gitee），只需在 `app/services/oauth.py` 实现一个 `OAuthProvider` 子类，无需改业务层。
 
 ## 1. 流程
 
@@ -35,10 +35,17 @@ OAUTH_GITHUB_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
 
 OAUTH_GOOGLE_CLIENT_ID=xxxxxxxxxxxxxxxxxxxx
 OAUTH_GOOGLE_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+
+# Microsoft Identity Platform v2.0 — 在 https://entra.microsoft.com 创建应用
+OAUTH_MICROSOFT_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+OAUTH_MICROSOFT_CLIENT_SECRET=xxxxxxxxxxxxxxxxxxxxxxxx
+# 租户策略: common | organizations | consumers | <tenant-guid>
+OAUTH_MICROSOFT_TENANT=common
 ```
 
 - **GitHub** OAuth App 在 https://github.com/settings/developers 创建，callback URL 写成：`<OAUTH_REDIRECT_BASE>/api/v1/auth/oauth/github/callback`
 - **Google** OAuth client 在 https://console.cloud.google.com/apis/credentials，新增 "OAuth client ID" → "Web application"，同样的 redirect URI。
+- **Microsoft** 应用在 https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade 注册，redirect URI 填：`<OAUTH_REDIRECT_BASE>/api/v1/auth/oauth/microsoft/callback`。支持工作/学校 + 个人账号两种身份（默认 `common`），如要限定范围可改 `OAUTH_MICROSOFT_TENANT`。
 
 填好之后只要重启 email-service 即可生效。`/api/v1/auth/oauth/providers` 端点会返回当前已配置的 provider。
 

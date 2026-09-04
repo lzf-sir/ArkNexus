@@ -7,9 +7,6 @@ import pytest
 from app.services import oauth, oauth_link_service
 
 
-pytestmark = pytest.mark.asyncio
-
-
 async def test_oauth_providers_empty_when_unconfigured():
     # By default no providers are configured (no client ids).
     assert oauth.list_configured_providers() in ([], None) or isinstance(oauth.list_configured_providers(), list)
@@ -20,6 +17,70 @@ async def test_oauth_state_sign_and_verify():
     assert oauth.verify_state("github", signed)
     assert not oauth.verify_state("github", signed + "x")
     assert not oauth.verify_state("google", signed)
+
+
+def test_microsoft_provider_tenant_whitelist_default():
+    """Unknown tenant values fall back to ``common`` for safety."""
+    p = oauth.MicrosoftProvider("id", "secret", "http://x/cb", tenant="")
+    assert p.tenant == "common"
+
+    p = oauth.MicrosoftProvider("id", "secret", "http://x/cb", tenant="bogus-tenant")
+    assert p.tenant == "common"
+
+    p = oauth.MicrosoftProvider("id", "secret", "http://x/cb", tenant="organizations")
+    assert p.tenant == "organizations"
+
+    p = oauth.MicrosoftProvider("id", "secret", "http://x/cb", tenant="CONSUMERS")
+    assert p.tenant == "consumers"
+
+    guid = "12345678-1234-1234-1234-123456789012"
+    p = oauth.MicrosoftProvider("id", "secret", "http://x/cb", tenant=guid)
+    assert p.tenant == guid
+
+
+def test_microsoft_provider_not_configured_without_credentials():
+    p = oauth.MicrosoftProvider("", "", "http://x/cb", tenant="common")
+    assert p.is_configured() is False
+
+    p = oauth.MicrosoftProvider("client-id", "client-secret", "http://x/cb")
+    assert p.is_configured() is True
+
+
+def test_microsoft_authorize_url_uses_v2_endpoint():
+    p = oauth.MicrosoftProvider("cid", "csec", "http://127.0.0.1:8080/api/v1/auth/oauth/microsoft/cb", tenant="common")
+    url = p.get_authorize_url("state-xyz", scopes=["openid", "email"])
+    assert url.startswith("https://login.microsoftonline.com/common/oauth2/v2.0/authorize?")
+    assert "client_id=cid" in url
+    assert "redirect_uri=" in url
+    assert "response_type=code" in url
+    assert "scope=openid+email" in url or "scope=openid%20email" in url
+    assert "state=state-xyz" in url
+    assert "prompt=select_account" in url
+
+
+def test_microsoft_authorize_url_default_scopes_when_none():
+    p = oauth.MicrosoftProvider("cid", "csec", "http://x/cb")
+    url = p.get_authorize_url("s", scopes=[])
+    # Defaults to openid email profile offline_access.
+    assert "openid" in url
+    assert "email" in url
+    assert "profile" in url
+    assert "offline_access" in url
+
+
+def test_get_provider_returns_microsoft_when_configured(monkeypatch):
+    monkeypatch.setattr(oauth.settings, "oauth_microsoft_client_id", "cid", raising=False)
+    monkeypatch.setattr(oauth.settings, "oauth_microsoft_client_secret", "csec", raising=False)
+    monkeypatch.setattr(oauth.settings, "oauth_microsoft_tenant", "common", raising=False)
+    p = oauth.get_provider("microsoft")
+    assert isinstance(p, oauth.MicrosoftProvider)
+    assert p.is_configured()
+
+
+def test_get_provider_returns_none_when_microsoft_unconfigured(monkeypatch):
+    monkeypatch.setattr(oauth.settings, "oauth_microsoft_client_id", "", raising=False)
+    monkeypatch.setattr(oauth.settings, "oauth_microsoft_client_secret", "", raising=False)
+    assert oauth.get_provider("microsoft") is None
 
 
 async def test_oauth_link_creates_user(db_session):
