@@ -191,6 +191,62 @@ export async function testProviderConnection(
   return data;
 }
 
+// ===== Search + export =====
+
+export interface SearchHit {
+  conversation_id: string;
+  conversation_title: string;
+  message_id: string;
+  role: string;
+  snippet: string;
+  created_at: string;
+}
+
+export async function searchConversations(
+  query: string,
+  opts?: { include_archived?: boolean; limit?: number }
+): Promise<SearchHit[]> {
+  const { data } = await api.get<SearchHit[]>("/ai/conversations/search", {
+    params: { q: query, ...(opts ?? {}) },
+  });
+  return data;
+}
+
+/** Trigger a browser download of a conversation in the chosen format. */
+export async function exportConversation(
+  conversationId: string,
+  format: "md" | "json"
+): Promise<void> {
+  const token = getToken();
+  const baseURL = (api.defaults.baseURL ?? "/api/v1").replace(/\/+$/, "");
+  const url = `${baseURL}/ai/conversations/${conversationId}/export?format=${format}`;
+  const resp = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+  if (!resp.ok) {
+    let detail = `HTTP ${resp.status}`;
+    try {
+      const j = await resp.json();
+      detail = j?.detail ?? detail;
+    } catch {
+      /* ignore */
+    }
+    throw new Error(detail);
+  }
+  const blob = await resp.blob();
+  const cd = resp.headers.get("Content-Disposition") ?? "";
+  const match = /filename="?([^"]+)"?/i.exec(cd);
+  const filename = match?.[1] ?? `conversation-${conversationId.slice(0, 8)}.${format}`;
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(objectUrl);
+}
+
 // ============================================================
 // Conversations
 // ============================================================

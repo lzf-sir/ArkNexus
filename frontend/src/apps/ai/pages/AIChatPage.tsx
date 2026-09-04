@@ -2,6 +2,7 @@ import {
   App,
   Button,
   Card,
+  Dropdown,
   Empty,
   Input,
   Modal,
@@ -27,6 +28,9 @@ import {
   User,
   Archive,
   ArchiveRestore,
+  Search,
+  Download,
+  X,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -35,11 +39,14 @@ import {
   ActiveSelection,
   ConversationSummary,
   ModelInfo,
+  SearchHit,
   createConversation,
   deleteConversation,
+  exportConversation,
   fetchAIConfig,
   getConversation,
   listConversations,
+  searchConversations,
   streamChat,
   updateConversation,
 } from "../api/client";
@@ -67,6 +74,8 @@ export function AIChatPage() {
   const [showArchived, setShowArchived] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [renameValue, setRenameValue] = useState("");
+  const [search, setSearch] = useState("");
+  const [exportOpenFor, setExportOpenFor] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -80,6 +89,15 @@ export function AIChatPage() {
     queryKey: ["ai-conversations", showArchived],
     queryFn: () => listConversations(showArchived),
     refetchInterval: 30_000,
+  });
+
+  const trimmedSearch = search.trim();
+  const searchQuery = useQuery<SearchHit[]>({
+    queryKey: ["ai-search", trimmedSearch, showArchived],
+    queryFn: () =>
+      searchConversations(trimmedSearch, { include_archived: showArchived }),
+    enabled: trimmedSearch.length > 0,
+    staleTime: 10_000,
   });
 
   const conversationQuery = useQuery({
@@ -240,6 +258,16 @@ export function AIChatPage() {
     }
   };
 
+  const handleExport = async (convId: string, format: "md" | "json") => {
+    setExportOpenFor(null);
+    try {
+      await exportConversation(convId, format);
+      toast.success(`已导出为 ${format.toUpperCase()}`);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
   const handleRegenerate = async () => {
     if (!selectedId || streaming) return;
     // Find the last user message in the local messages.
@@ -344,8 +372,57 @@ export function AIChatPage() {
           </div>
         }
       >
+        {/* Search input */}
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid rgba(0,0,0,0.04)" }}>
+          <Input
+            allowClear
+            size="small"
+            prefix={<Search size={13} strokeWidth={1.8} style={{ color: "#86868b" }} />}
+            placeholder="搜索全部对话"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            style={{ borderRadius: 8 }}
+          />
+        </div>
         <div className="apple-scroll" style={{ flex: 1, overflow: "auto" }}>
-          {conversationsQuery.isLoading ? (
+          {trimmedSearch ? (
+            // ===== Search results view =====
+            searchQuery.isLoading ? (
+              <div style={{ padding: 12 }}>
+                <Skeleton active />
+              </div>
+            ) : (searchQuery.data ?? []).length === 0 ? (
+              <Empty
+                description={`没有找到包含「${trimmedSearch}」的对话`}
+                style={{ marginTop: 48 }}
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+              />
+            ) : (
+              <>
+                <div
+                  style={{
+                    padding: "8px 14px",
+                    fontSize: 11,
+                    color: "#86868b",
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  {(searchQuery.data ?? []).length} 条结果
+                </div>
+                {(searchQuery.data ?? []).map((hit, idx) => (
+                  <SearchHitRow
+                    key={`${hit.conversation_id}-${hit.message_id || "title"}-${idx}`}
+                    hit={hit}
+                    onSelect={() => {
+                      setSelectedId(hit.conversation_id);
+                      setSearch("");
+                    }}
+                  />
+                ))}
+              </>
+            )
+          ) : conversationsQuery.isLoading ? (
             <div style={{ padding: 12 }}>
               <Skeleton active />
             </div>
@@ -422,6 +499,35 @@ export function AIChatPage() {
                       onClick={() => handleTogglePin(c)}
                       style={{ width: 24, height: 24, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
                     />
+                  </Tooltip>
+                  <Tooltip title="导出对话">
+                    <Dropdown
+                      menu={{
+                        items: [
+                          {
+                            key: "md",
+                            label: "导出为 Markdown (.md)",
+                            onClick: () => handleExport(c.id, "md"),
+                          },
+                          {
+                            key: "json",
+                            label: "导出为 JSON (.json)",
+                            onClick: () => handleExport(c.id, "json"),
+                          },
+                        ],
+                      }}
+                      trigger={["click"]}
+                      open={exportOpenFor === c.id}
+                      onOpenChange={(o) => setExportOpenFor(o ? c.id : null)}
+                    >
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<Download size={13} strokeWidth={1.8} />}
+                        onClick={(e) => e.stopPropagation()}
+                        style={{ width: 24, height: 24, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      />
+                    </Dropdown>
                   </Tooltip>
                   <Tooltip title={c.is_archived ? "取消归档" : "归档"}>
                     <Button
@@ -646,6 +752,72 @@ function PopconfirmWrapper({ onConfirm }: { onConfirm: () => Promise<void> }) {
       style={{ width: 24, height: 24, padding: 0, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
     />
   );
+}
+
+// ============================================================
+// Search hit row (rendered when the user types in the sidebar search box)
+// ============================================================
+function SearchHitRow({ hit, onSelect }: { hit: SearchHit; onSelect: () => void }) {
+  const roleTag =
+    hit.role === "user" ? "blue" :
+    hit.role === "assistant" ? "green" :
+    hit.role === "title" ? "gold" : "default";
+  const roleLabel =
+    hit.role === "user" ? "我" :
+    hit.role === "assistant" ? "AI" :
+    hit.role === "title" ? "标题" : hit.role;
+
+  // Convert the >>...<< highlight markers from the backend into <mark> tags.
+  const rendered = renderHighlight(hit.snippet);
+
+  return (
+    <div
+      onClick={onSelect}
+      style={{
+        cursor: "pointer",
+        padding: "10px 14px",
+        borderBottom: "1px solid rgba(0,0,0,0.04)",
+        transition: "background 0.15s",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "rgba(0,113,227,0.04)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "transparent";
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+        <Tag color={roleTag} style={{ margin: 0, borderRadius: 6, fontSize: 10, padding: "0 4px" }}>
+          {roleLabel}
+        </Tag>
+        <Text ellipsis style={{ fontSize: 13, fontWeight: 600, color: "#1d1d1f" }}>
+          {hit.conversation_title || "(无标题)"}
+        </Text>
+      </div>
+      <div
+        style={{
+          fontSize: 12,
+          color: "#86868b",
+          lineHeight: 1.55,
+          wordBreak: "break-word",
+        }}
+        // Backend escapes HTML in the snippet and uses >>...<< for the highlight.
+        dangerouslySetInnerHTML={{ __html: rendered }}
+      />
+      <div style={{ fontSize: 10, color: "#aeaeb2", marginTop: 4 }}>
+        {dayjs(hit.created_at).format("YYYY-MM-DD HH:mm")}
+      </div>
+    </div>
+  );
+}
+
+function renderHighlight(snippet: string): string {
+  // Escape HTML, then turn >>...<< into <mark>...</mark>.
+  const esc = snippet
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  return esc.replace(/>>([\s\S]+?)&lt;&lt;/g, (_m, inner) => `<mark style="background:rgba(0,113,227,0.18);padding:0 2px;border-radius:2px;">${inner}</mark>`);
 }
 
 // ============================================================

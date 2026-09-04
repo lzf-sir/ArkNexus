@@ -4,6 +4,9 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  // `class` strategy: dark mode is toggled by adding/removing the `dark` class
+  // on <html>. The theme provider (ThemeContext.tsx) handles persistence.
+  darkMode: "class",
   theme: {
     extend: {
       fontFamily: {

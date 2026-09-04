@@ -1,0 +1,13 @@
+[project]
+name = "arknexus-ai-service"
+version = "0.1.0"
+description = "ArkNexus AI microservice (multi-model chat)"
+requires-python = ">=3.11"
+authors = [{ name = "ArkNexus" }]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::pytest.PytestWarning:tests.test_conversation_service",
+]

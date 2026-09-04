@@ -1,4 +1,4 @@
-import { Layout, Menu, Avatar, Dropdown, Tag } from "antd";
+import { Layout, Menu, Avatar, Dropdown, Tag, Button, Tooltip } from "antd";
 import {
   LayoutDashboard,
   Mail,
@@ -9,11 +9,16 @@ import {
   User,
   MessageSquare,
   Link2,
+  Sun,
+  Moon,
+  Monitor,
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMemo } from "react";
 import { App as AntApp } from "antd";
 import { useAuth } from "../apps/auth/AuthContext";
+import { useTheme, type ThemeMode } from "../theme/ThemeContext";
+import { CommandPalette } from "../components/CommandPalette";
 
 const { Header, Sider, Content } = Layout;
 
@@ -52,6 +57,7 @@ export function MainLayout() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { message } = AntApp.useApp();
+  const { mode, setMode, resolved } = useTheme();
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith("/ai")) return "/ai";
@@ -65,6 +71,12 @@ export function MainLayout() {
     message.success("已登出");
     navigate("/login", { replace: true });
   };
+
+  const themeOptions: { key: ThemeMode; label: string; icon: React.ReactNode }[] = [
+    { key: "light", label: "浅色", icon: <Sun size={14} strokeWidth={1.8} /> },
+    { key: "dark", label: "深色", icon: <Moon size={14} strokeWidth={1.8} /> },
+    { key: "system", label: "跟随系统", icon: <Monitor size={14} strokeWidth={1.8} /> },
+  ];
 
   return (
     <Layout style={{ minHeight: "100vh", background: "#f5f5f7" }}>
@@ -174,6 +186,48 @@ export function MainLayout() {
             >
               30 天保留
             </Tag>
+            <Dropdown
+              menu={{
+                items: themeOptions.map((opt) => ({
+                  key: opt.key,
+                  icon: opt.icon,
+                  label: (
+                    <span>
+                      {opt.label}
+                      {mode === opt.key && (
+                        <span style={{ marginLeft: 8, color: "var(--apple-blue)" }}>✓</span>
+                      )}
+                    </span>
+                  ),
+                  onClick: () => setMode(opt.key),
+                })),
+              }}
+              trigger={["click"]}
+            >
+              <Tooltip title="主题">
+                <Button
+                  type="text"
+                  size="small"
+                  icon={
+                    resolved === "dark" ? (
+                      <Moon size={15} strokeWidth={1.8} />
+                    ) : (
+                      <Sun size={15} strokeWidth={1.8} />
+                    )
+                  }
+                  style={{
+                    width: 32,
+                    height: 32,
+                    padding: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    borderRadius: 8,
+                    color: "var(--apple-gray)",
+                  }}
+                />
+              </Tooltip>
+            </Dropdown>
             <a
               href="https://github.com/"
               target="_blank"
@@ -254,6 +308,8 @@ export function MainLayout() {
           <Outlet />
         </Content>
       </Layout>
+
+      <CommandPalette />
     </Layout>
   );
 }

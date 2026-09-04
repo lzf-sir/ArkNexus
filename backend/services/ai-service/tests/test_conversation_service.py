@@ -145,3 +145,154 @@ async def test_history_to_provider_messages_skips_duplicated_system_prompt(db_se
     # One system (from system_prompt), user, assistant.
     assert [m["role"] for m in out] == ["system", "user", "assistant"]
     assert out[0]["content"] == "You are helpful."
+
+
+# ===== Search + export =====
+
+
+async def test_search_returns_hits_with_snippet_highlight(db_session):
+    conv = await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(
+            provider_id="openai",
+            model_id="gpt-4o-mini",
+            title="DB question",
+            first_message="How do indexes work in PostgreSQL?",
+        ),
+    )
+    await conversation_service.save_assistant_message(
+        db_session, conv,
+        content="PostgreSQL B-tree indexes are stored in order...",
+        provider_id="openai",
+        model_id="gpt-4o-mini",
+    )
+
+    hits = await conversation_service.search_user_conversations(
+        db_session, "u-1", query="postgres"
+    )
+    assert len(hits) >= 1
+    # Title match OR content match produces a hit.
+    assert any("postgres" in h.snippet.lower() or "postgres" in h.conversation_title.lower() for h in hits)
+
+
+async def test_search_excludes_other_users(db_session):
+    await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(provider_id="openai", model_id="gpt-4o-mini", first_message="alpha topic"),
+    )
+    await conversation_service.create_conversation(
+        db_session, "u-2",
+        ConversationCreate(provider_id="openai", model_id="gpt-4o-mini", first_message="alpha topic too"),
+    )
+
+    hits = await conversation_service.search_user_conversations(db_session, "u-1", query="alpha")
+    assert all(h.conversation_id for h in hits)
+    # Verify we only see u-1's conversations.
+    from sqlalchemy import select
+    from app.models.conversation import Conversation
+    stmt = select(Conversation).where(Conversation.user_id == "u-1")
+    own_ids = {str(c.id) for c in (await db_session.execute(stmt)).scalars().all()}
+    for h in hits:
+        assert h.conversation_id in own_ids
+
+
+async def test_search_empty_query_returns_nothing(db_session):
+    await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(provider_id="openai", model_id="gpt-4o-mini", first_message="hi"),
+    )
+    assert await conversation_service.search_user_conversations(db_session, "u-1", query="") == []
+    assert await conversation_service.search_user_conversations(db_session, "u-1", query="   ") == []
+
+
+async def test_search_excludes_archived_by_default(db_session):
+    a = await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(provider_id="openai", model_id="gpt-4o-mini", title="Active thingy"),
+    )
+    b = await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(provider_id="openai", model_id="gpt-4o-mini", title="Archived thingy"),
+    )
+    await conversation_service.update_conversation(db_session, b, is_archived=True)
+
+    hits = await conversation_service.search_user_conversations(db_session, "u-1", query="thingy")
+    assert {h.conversation_id for h in hits} == {a.id}
+
+    hits_all = await conversation_service.search_user_conversations(
+        db_session, "u-1", query="thingy", include_archived=True
+    )
+    assert {h.conversation_id for h in hits_all} == {a.id, b.id}
+
+
+def test_make_snippet_marks_match_with_brackets():
+    snippet = conversation_service._make_snippet(
+        "PostgreSQL is a relational database. PostgreSQL rocks.", "postgres"
+    )
+    assert ">>" in snippet and "<<" in snippet
+    # Highlight wraps the exact query span ("postgres", 8 chars) at the match.
+    assert ">>PostgreS<<" in snippet
+
+
+def test_make_snippet_no_truncation_when_short():
+    snippet = conversation_service._make_snippet("hi", "postgres")
+    assert "…" not in snippet
+    assert snippet == "hi"
+
+
+def test_make_snippet_handles_no_match():
+    snippet = conversation_service._make_snippet("Hello world", "absent")
+    assert "Hello world" in snippet
+    assert ">>" not in snippet
+
+
+async def test_export_to_markdown_includes_metadata_and_messages(db_session):
+    conv = await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(
+            provider_id="openai",
+            model_id="gpt-4o-mini",
+            title="My chat",
+            system_prompt="Be brief.",
+            first_message="hi",
+        ),
+    )
+    await conversation_service.save_assistant_message(
+        db_session, conv,
+        content="hello there",
+        provider_id="openai",
+        model_id="gpt-4o-mini",
+        prompt_tokens=3,
+        completion_tokens=2,
+        total_tokens=5,
+        finish_reason="stop",
+    )
+    # Reload so the conversation's `selectin` messages cache is fresh.
+    fresh = await conversation_service.get_conversation(db_session, "u-1", conv.id)
+    md = conversation_service.export_to_markdown(fresh)
+    assert "# My chat" in md
+    assert "Provider: `openai`" in md
+    assert "Model: `gpt-4o-mini`" in md
+    assert "## System prompt" in md
+    assert "Be brief." in md
+    assert "### User" in md
+    assert "hi" in md
+    assert "### Assistant" in md
+    assert "hello there" in md
+    assert "tokens: prompt=3, completion=2, total=5" in md
+
+
+async def test_export_to_json_is_valid_json_with_messages(db_session):
+    conv = await conversation_service.create_conversation(
+        db_session, "u-1",
+        ConversationCreate(
+            provider_id="openai", model_id="gpt-4o-mini", first_message="ping"
+        ),
+    )
+    fresh = await conversation_service.get_conversation(db_session, "u-1", conv.id)
+    text = conversation_service.export_to_json(fresh)
+    import json as _json
+    parsed = _json.loads(text)
+    assert parsed["provider_id"] == "openai"
+    assert len(parsed["messages"]) == 1
+    assert parsed["messages"][0]["content"] == "ping"

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import CurrentUserDep, CurrentUser, db_session
@@ -13,6 +13,7 @@ from app.schemas.chat import (
     ConversationUpdate,
     ConversationSummary,
     MessageRead,
+    SearchHit,
 )
 from app.services import conversation_service
 
@@ -98,3 +99,56 @@ async def messages_endpoint(
     conv = await _load(session, user.id, conversation_id)
     msgs = await conversation_service.list_messages(session, conv)
     return [MessageRead.model_validate(m) for m in msgs]
+
+
+@router.get(
+    "/ai/conversations/search",
+    response_model=List[SearchHit],
+    summary="Full-text search across the user's conversation corpus.",
+)
+async def search_endpoint(
+    q: str = Query(min_length=1, max_length=200),
+    include_archived: bool = Query(default=False),
+    limit: int = Query(default=50, ge=1, le=200),
+    user: CurrentUser = CurrentUserDep,
+    session: AsyncSession = Depends(db_session),
+) -> List[SearchHit]:
+    return await conversation_service.search_user_conversations(
+        session,
+        user.id,
+        query=q,
+        include_archived=include_archived,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/ai/conversations/{conversation_id}/export",
+    summary="Export a conversation as Markdown or JSON.",
+    response_class=Response,
+)
+async def export_endpoint(
+    conversation_id: str,
+    format: str = Query(default="md", pattern="^(md|markdown|json)$"),
+    user: CurrentUser = CurrentUserDep,
+    session: AsyncSession = Depends(db_session),
+) -> Response:
+    conv = await _load(session, user.id, conversation_id)
+    fmt = "md" if format in ("md", "markdown") else "json"
+    if fmt == "json":
+        body = conversation_service.export_to_json(conv)
+        media_type = "application/json; charset=utf-8"
+        filename = f"{conv.title or 'conversation'}-{conv.id[:8]}.json"
+    else:
+        body = conversation_service.export_to_markdown(conv)
+        media_type = "text/markdown; charset=utf-8"
+        filename = f"{conv.title or 'conversation'}-{conv.id[:8]}.md"
+    # ASCII-safe fallback for filenames.
+    safe_filename = "".join(c if c.isalnum() or c in "._-" else "_" for c in filename)
+    return Response(
+        content=body,
+        media_type=media_type,
+        headers={
+            "Content-Disposition": f'attachment; filename="{safe_filename}"',
+        },
+    )

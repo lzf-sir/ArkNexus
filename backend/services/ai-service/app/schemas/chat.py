@@ -94,3 +94,33 @@ class ConversationSummary(ORMModel):
     updated_at: datetime
     message_count: int = 0
     last_message_preview: Optional[str] = None
+
+
+class SearchHit(ORMModel):
+    """A single match inside a user's conversation corpus."""
+
+    conversation_id: str
+    conversation_title: str
+    message_id: str
+    role: str
+    snippet: str  # text excerpt with the matched span highlighted (use `>>` / `<<` markers)
+    created_at: datetime
+
+
+class ExportFormat:
+    MARKDOWN = "md"
+    JSON = "json"
+
+
+__all__ = [
+    "Role",
+    "ConversationCreate",
+    "ConversationUpdate",
+    "ConversationRead",
+    "ConversationSummary",
+    "MessageCreate",
+    "MessageRead",
+    "ChatRequest",
+    "SearchHit",
+    "ExportFormat",
+]
