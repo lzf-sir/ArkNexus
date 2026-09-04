@@ -1,0 +1,13 @@
+# SPA routing fallback for Cloudflare Pages.
+# Any path that doesn't match a static asset is routed to index.html so the
+# client-side router (react-router-dom) can handle the route.
+# See: https://developers.cloudflare.com/pages/configuration/redirects/
+
+/init        /index.html  200
+/login       /index.html  200
+/auth/*      /index.html  200
+/email/*     /index.html  200
+/ai/*        /index.html  200
+/settings/*  /index.html  200
+/profile     /index.html  200
+/*           /index.html  200

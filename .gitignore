@@ -37,7 +37,13 @@ backend/services/email-service/data/attachments/*
 .env
 .env.local
 .env.*.local
+.env.production
 *.local
+
+# Cloudflare / deployment
+.wrangler/
+deploy/.env.production
+deploy/cloudflared/*.json
 
 # IDE
 .vscode/

@@ -11,8 +11,30 @@ export function setToken(token: string | null) {
   else localStorage.removeItem(TOKEN_KEY);
 }
 
+/**
+ * Resolve the API base URL.
+ *
+ * Order of precedence:
+ *   1. VITE_API_BASE_URL build-time env var (Cloudflare Pages dashboard,
+ *      .env.production, etc.).
+ *   2. window.__ARK_NEXUS_API_BASE__ injected at runtime via a small
+ *      <script> snippet - useful when the same SPA build is served from
+ *      multiple environments (staging vs production) without rebuilding.
+ *   3. Same-origin /api/v1 - convenient for local dev where the gateway
+ *      is reverse-proxied on the same host.
+ */
+function resolveApiBaseUrl(): string {
+  const fromBuild = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
+  if (fromBuild) return fromBuild.replace(/\/+$/, "");
+  const fromWindow = (window as unknown as { __ARK_NEXUS_API_BASE__?: string }).__ARK_NEXUS_API_BASE__;
+  if (typeof fromWindow === "string" && fromWindow.trim()) {
+    return fromWindow.trim().replace(/\/+$/, "");
+  }
+  return "/api/v1";
+}
+
 export const api: AxiosInstance = axios.create({
-  baseURL: "/api/v1",
+  baseURL: resolveApiBaseUrl(),
   timeout: 15_000,
 });
 

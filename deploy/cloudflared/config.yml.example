@@ -1,0 +1,34 @@
+# Declarative Cloudflare Tunnel config.
+#
+# Use this if you prefer to manage the tunnel via a checked-in YAML rather
+# than the Cloudflare Dashboard. The credentials file (`<UUID>.json`) is
+# still required and is downloaded from the dashboard.
+#
+# Two routing scenarios are supported — comment out the one you don't use.
+
+tunnel: <TUNNEL-UUID-HERE>     # ← replace with the UUID from `cloudflared tunnel create arknexus`
+credentials-file: /etc/cloudflared/<TUNNEL-UUID-HERE>.json
+
+# --- Scenario A: named ingress rules ---
+ingress:
+  # Frontend (Cloudflare Pages handles this directly; this is here only as
+  # a fallback if you ever point a custom subdomain at the tunnel instead).
+  # - hostname: arknexus.example.com
+  #   service: http_status:404
+
+  # Public API endpoint → reverse-proxy to the local gateway.
+  - hostname: api.example.com
+    path: /api/v1/*
+    service: http://gateway:8080
+  - hostname: api.example.com
+    service: http://gateway:8080
+
+  # SMTP receive (TCP). Cloudflare Tunnel supports TCP services via
+  # `cloudflared tunnel route tcp <id> smtp.example.com:1025` instead of the
+  # declarative ingress block. Run:
+  #   cloudflared tunnel route dns arknexus smtp.example.com
+  #   cloudflared tunnel route tcp arknexus 1025
+  # Then point your MX record at smtp.example.com.
+
+  # Catch-all 404 (required as the last rule).
+  - service: http_status:404

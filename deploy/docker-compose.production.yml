@@ -1,0 +1,160 @@
+# Production docker-compose for ArkNexus backend services.
+#
+# Run on any Linux host (VPS, bare metal, Hetzner CX, DigitalOcean droplet, etc.)
+# that has docker + docker-compose-plugin installed.
+#
+# This file:
+#   * runs the 4 Python services (gateway, email, ai, config) on a private network
+#   * exposes the gateway on 127.0.0.1:8080 only (cloudflared tunnel reaches it)
+#   * exposes email-service SMTP on 127.0.0.1:1025 (tunnel TCP ingress)
+#   * persists SQLite databases + attachments under ./data/
+#
+# Usage:
+#   cp .env.production.example .env.production  # then fill in secrets
+#   docker compose -f docker-compose.production.yml --env-file .env.production up -d
+#
+# Verify:
+#   docker compose -f docker-compose.production.yml ps
+#   curl -s http://127.0.0.1:8080/health
+
+services:
+  config-service:
+    image: arknexus/config-service:latest
+    build:
+      context: ../backend/services/config-service
+      dockerfile: ../../infra/docker/Dockerfile.python
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      DATABASE_URL: sqlite+aiosqlite:////data/config_service.db
+    volumes:
+      - config-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8081/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  email-service:
+    image: arknexus/email-service:latest
+    build:
+      context: ../backend/services/email-service
+      dockerfile: ../../infra/docker/Dockerfile.python
+    restart: unless-stopped
+    depends_on:
+      config-service:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DATABASE_URL: sqlite+aiosqlite:////data/email_service.db
+      ATTACHMENT_DIR: /data/attachments
+      CONFIG_SERVICE_URL: http://config-service:8081
+      OAUTH_REDIRECT_BASE: ${OAUTH_REDIRECT_BASE:-https://api.example.com}
+      # === OAuth secrets ===
+      OAUTH_STATE_SECRET: ${OAUTH_STATE_SECRET:?OAUTH_STATE_SECRET is required}
+      OAUTH_GITHUB_CLIENT_ID: ${OAUTH_GITHUB_CLIENT_ID:-}
+      OAUTH_GITHUB_CLIENT_SECRET: ${OAUTH_GITHUB_CLIENT_SECRET:-}
+      OAUTH_GOOGLE_CLIENT_ID: ${OAUTH_GOOGLE_CLIENT_ID:-}
+      OAUTH_GOOGLE_CLIENT_SECRET: ${OAUTH_GOOGLE_CLIENT_SECRET:-}
+      OAUTH_MICROSOFT_CLIENT_ID: ${OAUTH_MICROSOFT_CLIENT_ID:-}
+      OAUTH_MICROSOFT_CLIENT_SECRET: ${OAUTH_MICROSOFT_CLIENT_SECRET:-}
+      OAUTH_MICROSOFT_TENANT: ${OAUTH_MICROSOFT_TENANT:-common}
+      # === JWT ===
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
+      # === SMTP ===
+      SMTP_HOST: 0.0.0.0
+      SMTP_PORT: 1025
+    volumes:
+      - email-data:/data
+    ports:
+      - "127.0.0.1:1025:1025"  # exposed via Cloudflare Tunnel TCP ingress
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  ai-service:
+    image: arknexus/ai-service:latest
+    build:
+      context: ../backend/services/ai-service
+      dockerfile: ../../infra/docker/Dockerfile.python
+    restart: unless-stopped
+    depends_on:
+      config-service:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      DATABASE_URL: sqlite+aiosqlite:////data/ai_service.db
+      CONFIG_SERVICE_URL: http://config-service:8081
+    volumes:
+      - ai-data:/data
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8001/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  gateway:
+    image: arknexus/gateway:latest
+    build:
+      context: ../backend/services/gateway
+      dockerfile: ../../infra/docker/Dockerfile.python
+    restart: unless-stopped
+    depends_on:
+      email-service:
+        condition: service_healthy
+    environment:
+      APP_ENV: production
+      EMAIL_SERVICE_URL: http://email-service:8000
+      CONFIG_SERVICE_URL: http://config-service:8081
+      AI_SERVICE_URL: http://ai-service:8001
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      JWT_ALGORITHM: HS256
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://arknexus.example.com}
+      # Cloudflare Tunnel will hit us via 127.0.0.1, so trust its headers.
+      TRUST_PROXY_HEADERS: "true"
+    ports:
+      - "127.0.0.1:8080:8080"  # exposed via Cloudflare Tunnel HTTP ingress
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8080/health').status==200 else 1)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cloudflared:
+    image: cloudflare/cloudflared:2024.9.1
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:?CLOUDFLARE_TUNNEL_TOKEN is required}
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - gateway
+      - email-service
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  config-data:
+  email-data:
+  ai-data:

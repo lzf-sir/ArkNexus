@@ -1,0 +1,34 @@
+# Security + caching headers for Cloudflare Pages.
+# This file is served from the Pages root (placed in `public/` so it's
+# copied verbatim into `dist/`). See:
+#   https://developers.cloudflare.com/pages/configuration/headers/
+
+# Long-cache static assets hashed by Vite.
+/_astro/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/fonts/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# Cache index.html very briefly so edge nodes don't immediately revalidate
+# after every deploy, but allow quick invalidation via ?v= query string.
+/
+  Cache-Control: public, max-age=300, must-revalidate
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+
+# Defense-in-depth CSP. Adjust if you embed third-party widgets.
+# NOTE: 'unsafe-inline' for style-src is required by Ant Design + framer-motion.
+# For script-src, allow only self + the Cloudflare Insights endpoint.
+/index.html
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.example.com wss://*.example.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()

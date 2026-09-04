@@ -1,0 +1,23 @@
+# Cloudflare Pages project configuration.
+#
+# Deploy with:
+#   npx wrangler pages deploy dist --project-name arknexus
+#
+# Or wire up GitHub integration under Cloudflare Dashboard → Pages →
+# "arknexus" → Settings → Builds → Connect to Git.
+name = "arknexus"
+compatibility_date = "2024-09-23"
+pages_build_output_dir = "./dist"
+
+# Production environment variables (set these in the Cloudflare dashboard
+# under Pages → arknexus → Settings → Environment variables, or via
+# `wrangler pages secret put`). NEVER commit real secrets here.
+#
+# Required:
+#   VITE_API_BASE_URL  e.g. "https://api.example.com/api/v1"
+#
+# Optional:
+#   VITE_APP_NAME      override the product name shown in the UI
+#
+# [vars]
+# VITE_API_BASE_URL = "https://api.example.com/api/v1"

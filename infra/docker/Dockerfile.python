@@ -1,0 +1,48 @@
+# Production Dockerfile for an ArkNexus Python microservice.
+#
+# Build context must be the service directory, e.g.:
+#   docker build -f infra/docker/Dockerfile.python \
+#       -t arknexus/email-service:latest backend/services/email-service
+#
+# Or via docker-compose, which sets the build context automatically.
+
+FROM python:3.11-slim AS base
+
+# Avoid writing .pyc files + force unbuffered stdout/stderr for cleaner logs.
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System deps: build-essential for any wheel that needs to compile
+# (cryptography, aiosqlite's modern versions, etc.), tini for clean PID 1 signal
+# forwarding, curl for healthchecks.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+        build-essential \
+        tini \
+        curl \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python deps first so we get layer caching on code-only changes.
+COPY requirements.txt ./
+RUN pip install --upgrade pip \
+ && pip install -r requirements.txt \
+ && pip install uvicorn[standard] gunicorn  # production WSGI/ASGI runners
+
+# Copy the actual service source last (changes most frequently).
+COPY . /app
+
+# Drop privileges: run as the unprivileged `app` user.
+RUN useradd --create-home --shell /bin/bash --uid 10001 app \
+ && chown -R app:app /app
+USER app
+
+EXPOSE 8000
+ENTRYPOINT ["/usr/bin/tini", "--"]
+
+# Service-specific command is provided by docker-compose.
+# Common defaults if running directly:
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "2", "--proxy-headers"]

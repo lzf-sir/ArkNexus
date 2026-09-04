@@ -116,14 +116,26 @@ npm run dev                   # :5173
 ## 测试
 
 ```powershell
-cd backend\services\email-service   ; .\.venv\Scripts\python.exe -m pytest   # 28 passed
+cd backend\services\email-service   ; .\.venv\Scripts\python.exe -m pytest   # 61 passed
 cd backend\services\config-service  ; .\.venv\Scripts\python.exe -m pytest   #  7 passed
+cd backend\services\ai-service      ; .\.venv\Scripts\python.exe -m pytest   # 27 passed
 ```
+
+## 部署
+
+- **Cloudflare Pages + Tunnel**：完整分步文档见 [docs/deployment.md](docs/deployment.md)。前端托管在 Pages（全球 CDN + 自动 HTTPS），后端跑在任意 Linux VPS 上，通过 Cloudflare Tunnel 反向代理到边缘（无需开放任何端口）。成本约 **\$5/月**（Hetzner CAX11 + Cloudflare 免费层）。
+- **一键脚本**：
+  - `./scripts/deploy-pages.sh` — 前端 → Cloudflare Pages
+  - `./scripts/deploy-backend.sh REMOTE_HOST=...` — 后端 → VPS（rsync + docker compose up）
+- **Docker**：所有 4 个 Python 服务都有 Dockerfile（`infra/docker/Dockerfile.python`），完整栈在 `deploy/docker-compose.production.yml`。
 
 ## 路线图
 
-- [ ] docker-compose 部署栈（3 服务 + 可选 PG）
+- [x] docker-compose 部署栈（4 服务 + Cloudflare Tunnel）✅ `deploy/docker-compose.production.yml`
+- [x] Cloudflare Pages 部署配置 ✅ `frontend/wrangler.toml` + `_headers` + `_redirects`
 - [ ] 把 wizard 收集的 `database_url` 自动写入 `.env`，init finish 后提示用户重启
 - [ ] 真正接入 Redis 用于限流 / 缓存
 - [ ] 多管理员 + RBAC
+- [ ] 附件迁移到 Cloudflare R2（当前用本地卷）
+- [ ] 数据库迁移到 Cloudflare D1（当前用本地 SQLite）
 - [ ] 其他工具型微服务（备忘 / 待办 / 文件转换）
