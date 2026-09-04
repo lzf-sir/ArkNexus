@@ -97,6 +97,29 @@ async def create_message_from_parsed(
 
     await session.commit()
     await session.refresh(message)
+
+    # Fan out a real-time notification so any open SSE clients get a ping.
+    # Imported lazily to avoid circular imports on module load.
+    try:
+        from app.services.notifications import Notification, bus
+        notif = Notification(
+            id=message.id,
+            type="email.received",
+            title=f"新邮件：{parsed.subject or '(无主题)'}",
+            body=f"发件人：{parsed.from_address}",
+            data={
+                "message_id": message.id,
+                "mailbox_id": mailbox.id,
+                "from_address": parsed.from_address,
+                "subject": parsed.subject,
+                "has_attachments": bool(parsed.attachments),
+            },
+        )
+        # Best-effort: never let a publish failure block message persistence.
+        await bus.publish(notif)
+    except Exception:
+        pass
+
     return message
 
 

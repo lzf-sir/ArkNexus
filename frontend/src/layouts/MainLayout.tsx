@@ -20,6 +20,7 @@ import { useAuth } from "../apps/auth/AuthContext";
 import { useTheme, type ThemeMode } from "../theme/ThemeContext";
 import { CommandPalette } from "../components/CommandPalette";
 import { PwaInstallBanner } from "../components/PwaInstallBanner";
+import { NotificationCenter } from "../components/NotificationCenter";
 import { Menu as MenuIcon } from "lucide-react";
 
 const { Header, Sider, Content } = Layout;
@@ -335,6 +336,7 @@ export function MainLayout() {
 
       <CommandPalette />
       <PwaInstallBanner />
+      <NotificationCenter />
 
       {/* Mobile nav drawer */}
       <Drawer

@@ -23,7 +23,7 @@ export function setToken(token: string | null) {
  *   3. Same-origin /api/v1 - convenient for local dev where the gateway
  *      is reverse-proxied on the same host.
  */
-function resolveApiBaseUrl(): string {
+export function resolveApiBaseUrl(): string {
   const fromBuild = (import.meta.env.VITE_API_BASE_URL ?? "").trim();
   if (fromBuild) return fromBuild.replace(/\/+$/, "");
   const fromWindow = (window as unknown as { __ARK_NEXUS_API_BASE__?: string }).__ARK_NEXUS_API_BASE__;

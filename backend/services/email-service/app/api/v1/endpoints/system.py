@@ -15,6 +15,7 @@ from app.models.mailbox import Mailbox
 from app.schemas.common import StatsResponse
 from app.services.export import EXPORT_MANIFEST_VERSION, build_export
 from app.services.import_service import import_mbox_upload
+from app.services.notifications import bus as notification_bus, stream as notification_stream
 from app.services.retention_service import run_cleanup, stats
 
 router = APIRouter(prefix="/system", tags=["system"])
@@ -49,6 +50,34 @@ async def trigger_cleanup() -> dict:
         "files_removed": result["files_removed"],
         "ran_at": _last_cleanup_at,
     }
+
+
+@router.get(
+    "/notifications/stream",
+    summary="Server-Sent Events stream of real-time notifications (new mail, system events).",
+    response_class=StreamingResponse,
+)
+async def notifications_stream() -> StreamingResponse:
+    """Subscribe to the in-process notification bus.
+
+    Yields `data: {json}\n\n` frames. A `: heartbeat` comment is sent every 25s
+    so proxies don't kill the idle connection.
+    """
+    queue = await notification_bus.subscribe()
+
+    async def event_iter():
+        async for chunk in notification_stream(queue):
+            yield chunk
+
+    return StreamingResponse(
+        event_iter(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache, no-transform",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",  # nginx: don't buffer
+        },
+    )
 
 
 @router.get(
