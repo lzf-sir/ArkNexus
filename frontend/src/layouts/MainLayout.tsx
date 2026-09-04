@@ -1,4 +1,4 @@
-import { Layout, Menu, Avatar, Dropdown, Tag, Button, Tooltip } from "antd";
+import { Layout, Menu, Avatar, Dropdown, Tag, Button, Tooltip, Drawer } from "antd";
 import {
   LayoutDashboard,
   Mail,
@@ -14,11 +14,13 @@ import {
   Monitor,
 } from "lucide-react";
 import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { App as AntApp } from "antd";
 import { useAuth } from "../apps/auth/AuthContext";
 import { useTheme, type ThemeMode } from "../theme/ThemeContext";
 import { CommandPalette } from "../components/CommandPalette";
+import { PwaInstallBanner } from "../components/PwaInstallBanner";
+import { Menu as MenuIcon } from "lucide-react";
 
 const { Header, Sider, Content } = Layout;
 
@@ -58,6 +60,7 @@ export function MainLayout() {
   const { user, logout } = useAuth();
   const { message } = AntApp.useApp();
   const { mode, setMode, resolved } = useTheme();
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith("/ai")) return "/ai";
@@ -161,16 +164,37 @@ export function MainLayout() {
             justifyContent: "space-between",
           }}
         >
-          <span
-            style={{
-              fontSize: 15,
-              fontWeight: 600,
-              letterSpacing: "-0.01em",
-              color: "#1d1d1f",
-            }}
-          >
-            个人超级工作台
-          </span>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Tooltip title="菜单">
+              <Button
+                type="text"
+                size="small"
+                icon={<MenuIcon size={18} strokeWidth={1.8} />}
+                onClick={() => setMobileNavOpen(true)}
+                className="mobile-only"
+                style={{
+                  width: 32,
+                  height: 32,
+                  padding: 0,
+                  display: "none",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: 8,
+                }}
+                aria-label="打开菜单"
+              />
+            </Tooltip>
+            <span
+              style={{
+                fontSize: 15,
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                color: "#1d1d1f",
+              }}
+            >
+              个人超级工作台
+            </span>
+          </div>
           <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
             <Tag
               style={{
@@ -310,6 +334,26 @@ export function MainLayout() {
       </Layout>
 
       <CommandPalette />
+      <PwaInstallBanner />
+
+      {/* Mobile nav drawer */}
+      <Drawer
+        title="ArkNexus"
+        placement="left"
+        open={mobileNavOpen}
+        onClose={() => setMobileNavOpen(false)}
+        width={260}
+        styles={{ body: { padding: 0 } }}
+        className="mobile-only-drawer"
+      >
+        <Menu
+          mode="inline"
+          selectedKeys={[selectedKey]}
+          items={navItems}
+          onClick={() => setMobileNavOpen(false)}
+          style={{ borderInlineEnd: "none", padding: "8px 0" }}
+        />
+      </Drawer>
     </Layout>
   );
 }

@@ -247,10 +247,10 @@ export function EmailInboxPage() {
   const isTrashFolder = folder === "trash";
 
   return (
-    <div className="apple-fade-in" style={{ display: "flex", gap: 16, height: "calc(100vh - 104px)" }}>
+    <div className="apple-fade-in apple-email-layout" style={{ display: "flex", gap: 16, height: "calc(100vh - 104px)" }}>
       {/* Left sidebar: mailboxes + folders */}
       <Card
-        className="apple-card"
+        className="apple-card apple-email-list"
         style={{
           width: 240,
           flexShrink: 0,

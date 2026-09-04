@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0071e3"/>
+      <stop offset="100%" stop-color="#42a1ec"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="42" fill="url(#g)"/>
+  <!-- Stylized "A" + arc representing the ark nexus -->
+  <path d="M40 140 L96 52 L152 140 M62 110 L130 110"
+        fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="96" cy="160" r="6" fill="#fff"/>
+</svg>

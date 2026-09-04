@@ -334,3 +334,73 @@ body {
   text-decoration: underline;
 }
 
+/* ============================================
+   Responsive utilities (mobile-first)
+   ============================================ */
+
+/* By default .mobile-only is hidden; flip it on at <=768px viewport. */
+.mobile-only {
+  display: none !important;
+}
+
+/* Hide desktop-only blocks on small viewports. */
+@media (max-width: 768px) {
+  .mobile-only {
+    display: inline-flex !important;
+  }
+  .desktop-only {
+    display: none !important;
+  }
+
+  /* Reduce content padding on phones. */
+  .ant-layout-content {
+    padding: 12px !important;
+  }
+
+  /* Tighter, taller touch targets for buttons inside cards. */
+  .apple-card .ant-btn-sm {
+    min-height: 32px;
+  }
+
+  /* Stack the AI chat sidebar + main panel vertically on phones. */
+  .apple-chat-layout {
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: calc(100vh - 120px) !important;
+  }
+  .apple-chat-sidebar {
+    width: 100% !important;
+    max-height: 240px !important;
+  }
+  .apple-chat-main {
+    flex: 1 !important;
+    min-height: 60vh;
+  }
+
+  /* Email app: messages take full width, list collapses to top. */
+  .apple-email-layout {
+    flex-direction: column !important;
+    height: auto !important;
+  }
+  .apple-email-list {
+    width: 100% !important;
+    max-height: 220px !important;
+  }
+
+  /* Disable hover-only effects on touch devices. */
+  .apple-card-hover:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* Tablet portrait */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .ant-layout-content {
+    padding: 18px !important;
+  }
+  .apple-chat-sidebar {
+    width: 240px !important;
+  }
+}
+

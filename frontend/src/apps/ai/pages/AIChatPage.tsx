@@ -51,6 +51,7 @@ import {
   updateConversation,
 } from "../api/client";
 import { REGION_COLOR, REGION_LABEL } from "../constants";
+import { AIOnboarding } from "../components/AIOnboarding";
 
 const { Text } = Typography;
 
@@ -338,10 +339,10 @@ export function AIChatPage() {
   const selectedConv = (conversationsQuery.data ?? []).find((c) => c.id === selectedId) ?? null;
 
   return (
-    <div className="apple-fade-in" style={{ height: "calc(100vh - 104px)", display: "flex", gap: 16 }}>
+    <div className="apple-fade-in apple-chat-layout" style={{ height: "calc(100vh - 104px)", display: "flex", gap: 16 }}>
       {/* Conversations sidebar */}
       <Card
-        className="apple-card"
+        className="apple-card apple-chat-sidebar"
         style={{ width: 280, flexShrink: 0, display: "flex", flexDirection: "column", borderRadius: 16 }}
         styles={{ body: { padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" } }}
         title={
@@ -564,7 +565,7 @@ export function AIChatPage() {
 
       {/* Main chat area */}
       <Card
-        className="apple-card"
+        className="apple-card apple-chat-main"
         style={{
           flex: 1,
           display: "flex",
@@ -645,14 +646,23 @@ export function AIChatPage() {
             background: "#fbfbfd",
           }}
         >
-          {messages.length === 0 && (
+          {messages.length === 0 && active && (
             <Empty
-              description={
-                active ? "开始与 AI 对话吧" : "尚未配置模型，请前往「系统设置 → AI 模型配置」"
-              }
+              description="开始与 AI 对话吧"
               style={{ marginTop: 80 }}
               image={Empty.PRESENTED_IMAGE_SIMPLE}
             />
+          )}
+          {messages.length === 0 && !active && configQuery.data && (
+            <div className="apple-scroll" style={{ overflow: "auto" }}>
+              <AIOnboarding
+                providers={configQuery.data.providers}
+                configuredProviderIds={(configQuery.data.provider_configs ?? [])
+                  .filter((c) => c.api_key_set)
+                  .map((c) => c.provider_id)}
+                activeProviderId={configQuery.data.active?.provider_id}
+              />
+            </div>
           )}
           {messages.map((m) => (
             <MessageBubble key={m.id} msg={m} />
