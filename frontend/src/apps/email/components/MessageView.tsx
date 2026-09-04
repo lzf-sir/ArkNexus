@@ -3,6 +3,7 @@ import {
   Descriptions,
   Drawer,
   Empty,
+  Modal,
   Skeleton,
   Space,
   Spin,
@@ -14,11 +15,20 @@ import {
   PaperClipOutlined,
   StarFilled,
   StarOutlined,
+  TagsOutlined,
+  PlusOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { getMessage, updateMessage } from "../api/client";
-import type { MessageDetail } from "../api/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { App } from "antd";
+import {
+  getMessage,
+  updateMessage,
+  listLabels,
+  setMessageLabels,
+} from "../api/client";
+import type { LabelInfo, MessageDetail } from "../api/client";
+import { useEffect, useMemo, useState } from "react";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -30,10 +40,44 @@ interface Props {
 
 export function MessageView({ messageId, open, onClose }: Props) {
   const queryClient = useQueryClient();
+  const { message: toast } = App.useApp();
   const { data, isLoading } = useQuery<MessageDetail>({
     queryKey: ["message", messageId],
     queryFn: () => getMessage(messageId!),
     enabled: !!messageId && open,
+  });
+
+  // Load labels list (labels themselves are embedded on `data.labels`).
+  const labelsQuery = useQuery<LabelInfo[]>({
+    queryKey: ["labels"],
+    queryFn: listLabels,
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const [labelPickerOpen, setLabelPickerOpen] = useState(false);
+  const [pickedLabelIds, setPickedLabelIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (data?.labels) {
+      setPickedLabelIds(data.labels.map((l) => (l as any).label_id ?? (l as any).id));
+    }
+  }, [data]);
+
+  const labelMap = useMemo(() => {
+    const m: Record<string, LabelInfo> = {};
+    (labelsQuery.data ?? []).forEach((l) => (m[l.id] = l));
+    return m;
+  }, [labelsQuery.data]);
+
+  const setLabelsM = useMutation({
+    mutationFn: (ids: string[]) => setMessageLabels(messageId!, ids),
+    onSuccess: () => {
+      toast.success("已更新标签");
+      queryClient.invalidateQueries({ queryKey: ["message", messageId] });
+      queryClient.invalidateQueries({ queryKey: ["messages"] });
+      setLabelPickerOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const toggleStar = async () => {
@@ -44,6 +88,13 @@ export function MessageView({ messageId, open, onClose }: Props) {
 
   const downloadUrl = (msgId: string, attId: string) =>
     `/api/v1/messages/${msgId}/attachments/${attId}`;
+
+  // Normalise the inline label shape so we can use one consistent accessor.
+  const currentLabels = (data?.labels ?? []).map((l: any) => ({
+    label_id: l.label_id ?? l.id,
+    name: l.name,
+    color: l.color,
+  }));
 
   return (
     <Drawer
@@ -121,6 +172,38 @@ export function MessageView({ messageId, open, onClose }: Props) {
               </Descriptions.Item>
               <Descriptions.Item label="大小">
                 <span style={{ color: "#86868b" }}>{formatSize(data.size_bytes)}</span>
+              </Descriptions.Item>
+              <Descriptions.Item
+                label={
+                  <Space size={6}>
+                    <TagsOutlined style={{ color: "#86868b" }} />
+                    <span>标签</span>
+                  </Space>
+                }
+              >
+                <Space size={4} wrap>
+                  {currentLabels.length === 0 && (
+                    <span style={{ color: "#86868b", fontSize: 12 }}>无</span>
+                  )}
+                  {currentLabels.map((l) => (
+                    <Tag
+                      key={l.label_id}
+                      color={l.color}
+                      style={{ borderRadius: 6, margin: 0 }}
+                    >
+                      {l.name}
+                    </Tag>
+                  ))}
+                  <Button
+                    size="small"
+                    type="link"
+                    icon={<PlusOutlined />}
+                    onClick={() => setLabelPickerOpen(true)}
+                    style={{ padding: 0, fontSize: 12, height: "auto" }}
+                  >
+                    管理标签
+                  </Button>
+                </Space>
               </Descriptions.Item>
             </Descriptions>
           </div>
@@ -211,6 +294,55 @@ export function MessageView({ messageId, open, onClose }: Props) {
           </div>
         </Space>
       )}
+
+      {/* Label picker modal */}
+      <Modal
+        open={labelPickerOpen}
+        title="管理标签"
+        okText="保存"
+        cancelText="取消"
+        confirmLoading={setLabelsM.isPending}
+        onCancel={() => setLabelPickerOpen(false)}
+        onOk={() => setLabelsM.mutate(pickedLabelIds)}
+      >
+        {(labelsQuery.data ?? []).length === 0 ? (
+          <Empty description="还没有标签，请到侧边栏创建" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        ) : (
+          <Space direction="vertical" size={8} style={{ width: "100%" }}>
+            {(labelsQuery.data ?? []).map((l) => {
+              const checked = pickedLabelIds.includes(l.id);
+              return (
+                <div
+                  key={l.id}
+                  onClick={() => {
+                    setPickedLabelIds((cur) =>
+                      cur.includes(l.id) ? cur.filter((x) => x !== l.id) : [...cur, l.id]
+                    );
+                  }}
+                  style={{
+                    cursor: "pointer",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: `1px solid ${checked ? "rgba(0,113,227,0.30)" : "rgba(0,0,0,0.06)"}`,
+                    background: checked ? "rgba(0,113,227,0.04)" : "#fff",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  <Tag color={l.color} style={{ borderRadius: 6, margin: 0 }}>
+                    {l.name}
+                  </Tag>
+                  <span style={{ fontSize: 12, color: checked ? "#0071e3" : "#86868b" }}>
+                    {checked ? "已选" : "未选"}
+                  </span>
+                </div>
+              );
+            })}
+          </Space>
+        )}
+      </Modal>
     </Drawer>
   );
 }

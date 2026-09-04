@@ -4,6 +4,7 @@ import {
   Card,
   Empty,
   Input,
+  Modal,
   Skeleton,
   Space,
   Spin,
@@ -13,11 +14,19 @@ import {
 } from "antd";
 import {
   Bot,
+  Copy,
+  Check,
+  Edit3,
+  Pin,
+  PinOff,
   Plus,
+  RotateCcw,
   Send,
   Square,
-  User,
   Trash2,
+  User,
+  Archive,
+  ArchiveRestore,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -32,6 +41,7 @@ import {
   getConversation,
   listConversations,
   streamChat,
+  updateConversation,
 } from "../api/client";
 import { REGION_COLOR, REGION_LABEL } from "../constants";
 
@@ -54,6 +64,9 @@ export function AIChatPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
+  const [renameOpen, setRenameOpen] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -64,8 +77,8 @@ export function AIChatPage() {
   });
 
   const conversationsQuery = useQuery({
-    queryKey: ["ai-conversations"],
-    queryFn: () => listConversations(false),
+    queryKey: ["ai-conversations", showArchived],
+    queryFn: () => listConversations(showArchived),
     refetchInterval: 30_000,
   });
 
@@ -194,6 +207,108 @@ export function AIChatPage() {
     abortRef.current?.abort();
   };
 
+  const handleRename = async () => {
+    if (!selectedConv || !renameValue.trim()) return;
+    try {
+      await updateConversation(selectedConv.id, { title: renameValue.trim() });
+      queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["ai-conversation", selectedConv.id] });
+      toast.success("已重命名");
+      setRenameOpen(false);
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleTogglePin = async (c: ConversationSummary) => {
+    try {
+      await updateConversation(c.id, { is_pinned: !c.is_pinned });
+      queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleToggleArchive = async (c: ConversationSummary) => {
+    try {
+      await updateConversation(c.id, { is_archived: !c.is_archived });
+      queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+      if (c.id === selectedId) setSelectedId(null);
+      toast.success(c.is_archived ? "已取消归档" : "已归档");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const handleRegenerate = async () => {
+    if (!selectedId || streaming) return;
+    // Find the last user message in the local messages.
+    const lastUserIdx = (() => {
+      for (let i = messages.length - 1; i >= 0; i--) {
+        if (messages[i].role === "user") return i;
+      }
+      return -1;
+    })();
+    if (lastUserIdx < 0) {
+      toast.warning("没有可重新生成的用户消息");
+      return;
+    }
+    const lastUserText = messages[lastUserIdx].content;
+    // Drop any assistant messages after that user turn (including the empty pending one if present).
+    setMessages((cur) => cur.slice(0, lastUserIdx + 1));
+    const assistantId = "tmp-a-" + Date.now();
+    setMessages((cur) => [
+      ...cur,
+      { id: assistantId, role: "assistant", content: "", pending: true },
+    ]);
+    setStreaming(true);
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+    try {
+      await streamChat(
+        selectedId,
+        lastUserText,
+        (event) => {
+          if (event.type === "delta" && event.delta) {
+            setMessages((cur) =>
+              cur.map((m) =>
+                m.id === assistantId ? { ...m, content: m.content + event.delta } : m
+              )
+            );
+          } else if (event.type === "error") {
+            setMessages((cur) =>
+              cur.map((m) =>
+                m.id === assistantId
+                  ? { ...m, pending: false, error: event.message ?? "请求失败" }
+                  : m
+              )
+            );
+          } else if (event.type === "done") {
+            setMessages((cur) =>
+              cur.map((m) => (m.id === assistantId ? { ...m, pending: false } : m))
+            );
+          }
+        },
+        ctrl.signal
+      );
+    } catch (e) {
+      setMessages((cur) =>
+        cur.map((m) =>
+          m.id === assistantId
+            ? { ...m, pending: false, error: (e as Error).message }
+            : m
+        )
+      );
+    } finally {
+      setStreaming(false);
+      abortRef.current = null;
+      queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["ai-conversation", selectedId] });
+    }
+  };
+
+  const selectedConv = (conversationsQuery.data ?? []).find((c) => c.id === selectedId) ?? null;
+
   return (
     <div className="apple-fade-in" style={{ height: "calc(100vh - 104px)", display: "flex", gap: 16 }}>
       {/* Conversations sidebar */}
@@ -203,16 +318,29 @@ export function AIChatPage() {
         styles={{ body: { padding: 0, flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" } }}
         title={
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em" }}>对话列表</span>
-            <Tooltip title="新建对话">
-              <Button
-                size="small"
-                type="primary"
-                icon={<Plus size={14} strokeWidth={2.4} />}
-                onClick={newChat}
-                style={{ width: 28, height: 28, padding: 0, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
-              />
-            </Tooltip>
+            <span style={{ fontWeight: 600, fontSize: 15, letterSpacing: "-0.01em" }}>
+              {showArchived ? "已归档" : "对话列表"}
+            </span>
+            <Space size={4}>
+              <Tooltip title={showArchived ? "查看活跃对话" : "查看已归档"}>
+                <Button
+                  size="small"
+                  type="text"
+                  icon={showArchived ? <ArchiveRestore size={14} strokeWidth={1.8} /> : <Archive size={14} strokeWidth={1.8} />}
+                  onClick={() => setShowArchived((v) => !v)}
+                  style={{ width: 28, height: 28, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                />
+              </Tooltip>
+              <Tooltip title="新建对话">
+                <Button
+                  size="small"
+                  type="primary"
+                  icon={<Plus size={14} strokeWidth={2.4} />}
+                  onClick={newChat}
+                  style={{ width: 28, height: 28, padding: 0, borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}
+                />
+              </Tooltip>
+            </Space>
           </div>
         }
       >
@@ -252,7 +380,11 @@ export function AIChatPage() {
               >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <Bot size={14} strokeWidth={1.8} style={{ color: "#0071e3", flexShrink: 0 }} />
+                    {c.is_pinned ? (
+                      <Pin size={12} strokeWidth={2} fill="#fadb14" color="#fadb14" style={{ flexShrink: 0 }} />
+                    ) : (
+                      <Bot size={14} strokeWidth={1.8} style={{ color: "#0071e3", flexShrink: 0 }} />
+                    )}
                     <Text
                       ellipsis
                       style={{
@@ -263,29 +395,61 @@ export function AIChatPage() {
                     >
                       {c.title}
                     </Text>
-                    {c.is_pinned && (
-                      <Tag color="gold" style={{ margin: 0, borderRadius: 6, fontSize: 10, padding: "0 4px" }}>
-                        置顶
+                    {c.is_archived && (
+                      <Tag color="default" style={{ margin: 0, borderRadius: 6, fontSize: 10, padding: "0 4px" }}>
+                        归档
                       </Tag>
                     )}
                   </div>
                   <div style={{ fontSize: 11, color: "#86868b", marginTop: 3, marginLeft: 20 }}>
                     {(providersById[c.provider_id]?.name ?? c.provider_id)} · {c.model_id}
                     <br />
-                    {dayjs(c.updated_at).format("MM-DD HH:mm")}
+                    {c.message_count} 条消息 · {dayjs(c.updated_at).format("MM-DD HH:mm")}
                   </div>
                 </div>
-                <PopconfirmWrapper
-                  onConfirm={async () => {
-                    try {
-                      await deleteConversation(c.id);
-                      if (c.id === selectedId) setSelectedId(null);
-                      queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
-                    } catch (err) {
-                      toast.error((err as Error).message);
-                    }
-                  }}
-                />
+                <Space size={2} onClick={(e) => e.stopPropagation()}>
+                  <Tooltip title={c.is_pinned ? "取消置顶" : "置顶"}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={
+                        c.is_pinned ? (
+                          <PinOff size={13} strokeWidth={1.8} color="#fadb14" />
+                        ) : (
+                          <Pin size={13} strokeWidth={1.8} />
+                        )
+                      }
+                      onClick={() => handleTogglePin(c)}
+                      style={{ width: 24, height: 24, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                    />
+                  </Tooltip>
+                  <Tooltip title={c.is_archived ? "取消归档" : "归档"}>
+                    <Button
+                      type="text"
+                      size="small"
+                      icon={
+                        c.is_archived ? (
+                          <ArchiveRestore size={13} strokeWidth={1.8} />
+                        ) : (
+                          <Archive size={13} strokeWidth={1.8} />
+                        )
+                      }
+                      onClick={() => handleToggleArchive(c)}
+                      style={{ width: 24, height: 24, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                    />
+                  </Tooltip>
+                  <PopconfirmWrapper
+                    onConfirm={async () => {
+                      try {
+                        await deleteConversation(c.id);
+                        if (c.id === selectedId) setSelectedId(null);
+                        queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
+                      } catch (err) {
+                        toast.error((err as Error).message);
+                      }
+                    }}
+                  />
+                </Space>
               </div>
             ))
           )}
@@ -304,30 +468,65 @@ export function AIChatPage() {
         }}
         styles={{ body: { padding: 0, height: "100%", display: "flex", flexDirection: "column" } }}
         title={
-          <Space align="center">
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: "linear-gradient(135deg, #0071e3 0%, #42a1ec 100%)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Bot size={16} color="#fff" strokeWidth={2} />
-            </div>
-            <span style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em" }}>AI 会话</span>
-            {activeProvider && activeModel && (
-              <Tag color={REGION_COLOR[activeProvider.region]} style={{ borderRadius: 6 }}>
-                {REGION_LABEL[activeProvider.region]}
-              </Tag>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "justify-between", width: "100%" }}>
+            <Space align="center" style={{ flex: 1, minWidth: 0 }}>
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: 8,
+                  background: "linear-gradient(135deg, #0071e3 0%, #42a1ec 100%)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <Bot size={16} color="#fff" strokeWidth={2} />
+              </div>
+              <Text
+                ellipsis
+                style={{ fontSize: 15, fontWeight: 600, letterSpacing: "-0.01em", maxWidth: 280 }}
+                title={selectedConv?.title || "AI 会话"}
+              >
+                {selectedConv?.title || "AI 会话"}
+              </Text>
+              {selectedConv && (
+                <Tooltip title="重命名">
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<Edit3 size={13} strokeWidth={1.8} />}
+                    onClick={() => {
+                      setRenameValue(selectedConv.title);
+                      setRenameOpen(true);
+                    }}
+                    style={{ width: 26, height: 26, padding: 0, display: "flex", alignItems: "center", justifyContent: "center" }}
+                  />
+                </Tooltip>
+              )}
+              {activeProvider && activeModel && (
+                <Tag color={REGION_COLOR[activeProvider.region]} style={{ borderRadius: 6 }}>
+                  {REGION_LABEL[activeProvider.region]}
+                </Tag>
+              )}
+              {activeModel && (
+                <Tag color="blue" style={{ borderRadius: 6 }}>{activeModel.name}</Tag>
+              )}
+            </Space>
+            {selectedConv && !streaming && (
+              <Tooltip title="重新生成最近一条助手回复">
+                <Button
+                  size="small"
+                  icon={<RotateCcw size={13} strokeWidth={1.8} />}
+                  onClick={handleRegenerate}
+                  style={{ borderRadius: 8 }}
+                >
+                  重新生成
+                </Button>
+              </Tooltip>
             )}
-            {activeModel && (
-              <Tag color="blue" style={{ borderRadius: 6 }}>{activeModel.name}</Tag>
-            )}
-          </Space>
+          </div>
         }
       >
         {/* Messages */}
@@ -401,6 +600,27 @@ export function AIChatPage() {
           </div>
         </div>
       </Card>
+
+      {/* Rename conversation modal */}
+      <Modal
+        open={renameOpen}
+        title="重命名对话"
+        okText="保存"
+        cancelText="取消"
+        onCancel={() => setRenameOpen(false)}
+        onOk={handleRename}
+        destroyOnClose
+      >
+        <Input
+          autoFocus
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onPressEnter={handleRename}
+          placeholder="新标题"
+          maxLength={200}
+          style={{ height: 40 }}
+        />
+      </Modal>
     </div>
   );
 }
@@ -433,6 +653,17 @@ function PopconfirmWrapper({ onConfirm }: { onConfirm: () => Promise<void> }) {
 // ============================================================
 function MessageBubble({ msg }: { msg: ChatMessage }) {
   const isUser = msg.role === "user";
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async () => {
+    if (!msg.content) return;
+    try {
+      await navigator.clipboard.writeText(msg.content);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      /* ignore */
+    }
+  };
   return (
     <div
       style={{
@@ -467,6 +698,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
 
       {/* Bubble */}
       <div
+        className="apple-msg-bubble"
         style={{
           maxWidth: "70%",
           background: isUser ? "#0071e3" : "#fff",
@@ -481,6 +713,7 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
           wordBreak: "break-word",
           lineHeight: 1.7,
           fontSize: 14,
+          position: "relative",
         }}
       >
         {msg.pending && !msg.content ? (
@@ -494,6 +727,36 @@ function MessageBubble({ msg }: { msg: ChatMessage }) {
         )}
         {msg.pending && msg.content && (
           <span style={{ opacity: 0.5, marginLeft: 4 }}>▍</span>
+        )}
+        {/* Copy button (only when bubble has content and not pending) */}
+        {!msg.pending && msg.content && !msg.error && (
+          <button
+            onClick={handleCopy}
+            aria-label="复制消息"
+            className="msg-copy-btn"
+            style={{
+              position: "absolute",
+              bottom: -10,
+              right: isUser ? "auto" : 8,
+              left: isUser ? 8 : "auto",
+              width: 26,
+              height: 26,
+              borderRadius: 13,
+              border: "1px solid rgba(0,0,0,0.08)",
+              background: copied ? "#34c759" : "#fff",
+              color: copied ? "#fff" : "#86868b",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+              opacity: 0,
+              transition: "opacity 0.2s, background 0.2s, color 0.2s",
+              padding: 0,
+              boxShadow: "0 2px 6px rgba(0,0,0,0.08)",
+            }}
+          >
+            {copied ? <Check size={13} strokeWidth={2.4} /> : <Copy size={13} strokeWidth={1.8} />}
+          </button>
         )}
       </div>
     </div>

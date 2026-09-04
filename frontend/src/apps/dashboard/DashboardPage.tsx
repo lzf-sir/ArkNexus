@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Zap,
   Inbox,
+  Bot,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import dayjs from "dayjs";
@@ -310,9 +311,16 @@ export function DashboardPage() {
                     新建临时邮箱
                   </Button>
                 </Link>
-                <Link to="/email/compose">
-                  <Button icon={<Pencil size={15} strokeWidth={2} />} style={{ borderRadius: 980 }}>
-                    写邮件
+                <Button
+                  icon={<Pencil size={15} strokeWidth={2} />}
+                  onClick={() => message.info("请进入「临时邮箱 → 左侧邮箱 → 写邮件」创建草稿")}
+                  style={{ borderRadius: 980 }}
+                >
+                  写邮件
+                </Button>
+                <Link to="/ai/chat">
+                  <Button icon={<Bot size={15} strokeWidth={2} />} style={{ borderRadius: 980 }}>
+                    AI 会话
                   </Button>
                 </Link>
                 <Link to="/settings">

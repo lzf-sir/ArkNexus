@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import time
 from typing import Any, Dict, List
 
 import httpx
@@ -19,6 +20,7 @@ from app.schemas.config import (
     ProviderConfigUpdate,
 )
 from app.services.ai_config_store import get_config_store
+from app.services.llm_client import UpstreamError, _auth_headers, _resolve_url
 
 logger = logging.getLogger(__name__)
 
@@ -96,3 +98,106 @@ async def update_default_params(payload: DefaultParamsUpdate, _user=CurrentUserD
         params["top_p"] = payload.top_p
     await get_config_store().set_default_params(params)
     return DefaultParams(**(await get_config_store().get_default_params()))
+
+
+@router.post(
+    "/ai/config/provider/{provider_id}/test",
+    summary="Probe a provider by sending a tiny 'hi' request.",
+)
+async def test_provider_connection(provider_id: str, _user=CurrentUserDep) -> Dict[str, Any]:
+    """Send a 1-token completion to verify the configured API key + base URL work.
+
+    Returns a small JSON envelope:
+
+      * ``ok`` - True on success
+      * ``status`` - HTTP status from the upstream (None on transport error)
+      * ``latency_ms`` - round-trip time
+      * ``reply`` - first ~80 chars of the upstream reply (or error excerpt)
+    """
+    if not CONFIG_BASE:
+        raise HTTPException(status_code=503, detail="config-service 未连接，无法读取目录")
+
+    providers = await _fetch_catalog_providers()
+    provider = next((p for p in providers if p.get("id") == provider_id), None)
+    if provider is None:
+        raise HTTPException(status_code=404, detail=f"未知服务商: {provider_id}")
+
+    cfg_store = get_config_store()
+    api_key = await cfg_store.get_api_key(provider_id)
+    if not api_key:
+        return {
+            "ok": False,
+            "status": None,
+            "latency_ms": 0,
+            "reply": "尚未配置 API Key",
+        }
+    base_url_override = await cfg_store.get_base_url_override(provider_id)
+
+    # Pick the first model — we only care about a successful round-trip.
+    models = provider.get("models") or []
+    if not models:
+        raise HTTPException(status_code=400, detail="该服务商没有任何模型")
+    model_id = models[0].get("id") or ""
+
+    style = provider.get("api_style", "openai")
+    try:
+        url = _resolve_url(provider, base_url_override)
+    except UpstreamError as exc:
+        return {"ok": False, "status": None, "latency_ms": 0, "reply": str(exc)}
+
+    headers = _auth_headers(provider, api_key)
+    headers["Content-Type"] = "application/json"
+    if style == "anthropic":
+        headers["anthropic-version"] = "2023-06-01"
+
+    if style == "anthropic":
+        payload: Dict[str, Any] = {
+            "model": model_id,
+            "max_tokens": 8,
+            "messages": [{"role": "user", "content": "hi"}],
+        }
+    else:
+        payload = {
+            "model": model_id,
+            "messages": [{"role": "user", "content": "hi"}],
+            "max_tokens": 8,
+            "stream": False,
+        }
+
+    start = time.monotonic()
+    try:
+        async with httpx.AsyncClient(timeout=20.0) as client:
+            r = await client.post(url, headers=headers, json=payload)
+    except httpx.HTTPError as exc:
+        return {
+            "ok": False,
+            "status": None,
+            "latency_ms": int((time.monotonic() - start) * 1000),
+            "reply": f"网络错误: {exc}",
+        }
+    latency_ms = int((time.monotonic() - start) * 1000)
+
+    if r.status_code >= 400:
+        # Try to surface a useful error excerpt.
+        try:
+            j = r.json()
+            if isinstance(j, dict):
+                excerpt = str(j.get("error", {}).get("message") or j)[:240]
+            else:
+                excerpt = str(j)[:240]
+        except Exception:  # noqa: BLE001
+            excerpt = r.text[:240]
+        return {
+            "ok": False,
+            "status": r.status_code,
+            "latency_ms": latency_ms,
+            "reply": excerpt,
+        }
+
+    return {
+        "ok": True,
+        "status": r.status_code,
+        "latency_ms": latency_ms,
+        "reply": "OK",
+        "model": model_id,
+    }

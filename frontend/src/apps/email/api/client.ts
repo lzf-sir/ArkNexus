@@ -39,6 +39,7 @@ export interface MessageDetail extends Omit<MessageSummary, "preview"> {
   cc_addresses: string[];
   body_text: string | null;
   body_html: string | null;
+  labels?: Array<{ id?: string; label_id?: string; name: string; color: string }>;
   attachments: AttachmentMeta[];
 }
 

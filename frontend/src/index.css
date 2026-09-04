@@ -292,3 +292,62 @@ body {
   border-color: var(--apple-blue) !important;
   box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12) !important;
 }
+
+/* ============================================
+   AI Chat Message Bubble utilities
+   ============================================ */
+
+/* Show the copy button on bubble hover */
+.apple-msg-bubble:hover .msg-copy-btn {
+  opacity: 1 !important;
+}
+
+/* Inline code inside assistant bubble */
+.apple-msg-bubble code,
+.apple-msg-bubble pre code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+  font-size: 0.92em;
+  background: rgba(0, 113, 227, 0.08);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: inherit;
+}
+
+.apple-msg-bubble pre {
+  background: rgba(0, 0, 0, 0.04);
+  padding: 10px 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  font-size: 13px;
+  margin: 8px 0;
+}
+
+.apple-msg-bubble pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Body of message drawer */
+.msg-content :where(h1, h2, h3, h4) {
+  margin-top: 1.2em;
+  margin-bottom: 0.5em;
+  font-weight: 600;
+}
+.msg-content :where(ul, ol) {
+  padding-left: 1.4em;
+  margin: 0.4em 0;
+}
+.msg-content :where(blockquote) {
+  border-left: 3px solid var(--apple-blue);
+  padding-left: 10px;
+  color: var(--apple-gray);
+  margin: 8px 0;
+}
+.msg-content :where(a) {
+  color: var(--apple-blue);
+  text-decoration: none;
+}
+.msg-content :where(a):hover {
+  text-decoration: underline;
+}
+

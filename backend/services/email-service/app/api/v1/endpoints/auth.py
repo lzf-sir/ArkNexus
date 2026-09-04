@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import current_user, db_session
 from app.core.config import settings
 from app.core.security import create_access_token
+from app.models.oauth import OAuthAccount
 from app.models.user import User
 from app.schemas.auth import (
     PasswordChange,
@@ -121,3 +125,53 @@ async def change_password_endpoint(
     except user_service.InvalidCredentials as exc:
         raise HTTPException(status_code=401, detail="Current password is incorrect") from exc
     return _to_user_read(user)
+
+
+# ===== OAuth account linkage =====
+
+
+@router.get(
+    "/me/oauth-accounts",
+    summary="List OAuth accounts linked to the current user.",
+)
+async def list_oauth_accounts_endpoint(
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(db_session),
+) -> List[dict]:
+    stmt = select(OAuthAccount).where(OAuthAccount.user_id == user.id)
+    rows = (await session.execute(stmt)).scalars().all()
+    return [
+        {
+            "id": r.id,
+            "provider": r.provider,
+            "provider_user_id": r.provider_user_id,
+            "provider_email": r.provider_email,
+            "provider_display_name": r.provider_display_name,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "last_used_at": r.updated_at.isoformat() if r.updated_at else None,
+        }
+        for r in rows
+    ]
+
+
+@router.delete(
+    "/me/oauth-accounts/{account_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    response_class=Response,
+    response_model=None,
+    summary="Unlink an OAuth account from the current user.",
+)
+async def unlink_oauth_account_endpoint(
+    account_id: str,
+    user: User = Depends(current_user),
+    session: AsyncSession = Depends(db_session),
+) -> None:
+    stmt = select(OAuthAccount).where(
+        OAuthAccount.id == account_id,
+        OAuthAccount.user_id == user.id,
+    )
+    link = (await session.execute(stmt)).scalar_one_or_none()
+    if link is None:
+        raise HTTPException(status_code=404, detail="OAuth account not found")
+    await session.delete(link)
+    await session.commit()

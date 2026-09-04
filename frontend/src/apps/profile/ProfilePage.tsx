@@ -4,17 +4,26 @@ import {
   Button,
   Card,
   Descriptions,
+  Empty,
   Form,
   Input,
+  Popconfirm,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
-import { User, Shield, KeyRound } from "lucide-react";
+import { User, Shield, KeyRound, Link2, Unlink, Mail } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import dayjs from "dayjs";
-import { fetchMe, login } from "@/lib/api";
+import {
+  fetchMe,
+  listOAuthAccounts,
+  unlinkOAuthAccount,
+  type OAuthAccountInfo,
+} from "@/lib/api";
 import { useAuth } from "../auth/AuthContext";
+import { startOAuthLogin } from "../auth/api/oauth";
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -72,6 +81,37 @@ export function ProfilePage() {
     },
     onError: (err: Error) => toast.error(err.message),
   });
+
+  const oauthAccountsQuery = useQuery({
+    queryKey: ["oauth-accounts"],
+    queryFn: listOAuthAccounts,
+    enabled: !!user,
+    refetchInterval: 60_000,
+  });
+
+  const unlinkMutation = useMutation({
+    mutationFn: (id: string) => unlinkOAuthAccount(id),
+    onSuccess: () => {
+      toast.success("已解绑");
+      queryClient.invalidateQueries({ queryKey: ["oauth-accounts"] });
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+
+  const PROVIDER_META: Record<
+    string,
+    { icon: React.ReactNode; label: string; color: string }
+  > = {
+    github: { icon: <GithubIcon size={14} />, label: "GitHub", color: "#24292f" },
+    google: { icon: <Mail size={14} strokeWidth={1.8} />, label: "Google", color: "#4285f4" },
+  };
+
+  const linkedProviders = new Set(
+    (oauthAccountsQuery.data ?? []).map((a) => a.provider)
+  );
+  const availableToLink = Object.keys(PROVIDER_META).filter(
+    (p) => !linkedProviders.has(p)
+  );
 
   return (
     <Space direction="vertical" size="large" style={{ width: "100%" }} className="apple-fade-in">
@@ -242,6 +282,134 @@ export function ProfilePage() {
           </Button>
         </Form>
       </Card>
+
+      {/* OAuth account linkage */}
+      <Card
+        className="apple-card"
+        style={{ borderRadius: 16 }}
+        title={
+          <Space align="center">
+            <Link2 size={16} strokeWidth={1.8} style={{ color: "#0071e3" }} />
+            <span style={{ fontWeight: 600, fontSize: 16, letterSpacing: "-0.01em" }}>
+              第三方账号
+            </span>
+          </Space>
+        }
+      >
+        <p style={{ color: "#86868b", fontSize: 14, marginTop: 0, marginBottom: 16 }}>
+          链接第三方账号后可一键登录。解绑后下次仍可用对应账号重新链接。
+        </p>
+
+        {oauthAccountsQuery.data && oauthAccountsQuery.data.length > 0 && (
+          <Space direction="vertical" size={10} style={{ width: "100%", marginBottom: 16 }}>
+            {oauthAccountsQuery.data.map((a: OAuthAccountInfo) => {
+              const meta = PROVIDER_META[a.provider] ?? {
+                icon: <Link2 size={14} strokeWidth={1.8} />,
+                label: a.provider,
+                color: "#86868b",
+              };
+              return (
+                <div
+                  key={a.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    background: "#fff",
+                  }}
+                >
+                  <Space size={12}>
+                    <div
+                      style={{
+                        width: 32,
+                        height: 32,
+                        borderRadius: 10,
+                        background: meta.color,
+                        color: "#fff",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      {meta.icon}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 600, fontSize: 14, color: "#1d1d1f" }}>
+                        {meta.label}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#86868b", marginTop: 2 }}>
+                        {a.provider_email || a.provider_display_name || a.provider_user_id}
+                        {a.last_used_at && (
+                          <> · 上次使用 {dayjs(a.last_used_at).format("YYYY-MM-DD")}</>
+                        )}
+                      </div>
+                    </div>
+                  </Space>
+                  <Popconfirm
+                    title="解绑该第三方账号？"
+                    description="解绑后将无法使用该账号直接登录。"
+                    okText="解绑"
+                    cancelText="取消"
+                    onConfirm={() => unlinkMutation.mutate(a.id)}
+                  >
+                    <Tooltip title="解绑">
+                      <Button
+                        size="small"
+                        type="text"
+                        danger
+                        icon={<Unlink size={14} strokeWidth={1.8} />}
+                        loading={unlinkMutation.isPending && unlinkMutation.variables === a.id}
+                        style={{ display: "flex", alignItems: "center", gap: 4 }}
+                      >
+                        解绑
+                      </Button>
+                    </Tooltip>
+                  </Popconfirm>
+                </div>
+              );
+            })}
+          </Space>
+        )}
+
+        {oauthAccountsQuery.data && oauthAccountsQuery.data.length === 0 && (
+          <Empty description="尚未链接任何第三方账号" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+        )}
+
+        {availableToLink.length > 0 && (
+          <Space wrap size={8}>
+            <span style={{ fontSize: 13, color: "#86868b" }}>链接：</span>
+            {availableToLink.map((p) => {
+              const meta = PROVIDER_META[p];
+              return (
+                <Button
+                  key={p}
+                  size="small"
+                  icon={meta.icon}
+                  onClick={() => startOAuthLogin(p, "/profile")}
+                  style={{
+                    borderRadius: 8,
+                    borderColor: meta.color,
+                    color: meta.color,
+                  }}
+                >
+                  {meta.label}
+                </Button>
+              );
+            })}
+          </Space>
+        )}
+      </Card>
     </Space>
+  );
+}
+
+function GithubIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z" />
+    </svg>
   );
 }

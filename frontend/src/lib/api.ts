@@ -78,6 +78,25 @@ export async function fetchMe(): Promise<AuthUser> {
   return data;
 }
 
+export interface OAuthAccountInfo {
+  id: string;
+  provider: string;
+  provider_user_id: string;
+  provider_email: string | null;
+  provider_display_name: string | null;
+  created_at: string | null;
+  last_used_at: string | null;
+}
+
+export async function listOAuthAccounts(): Promise<OAuthAccountInfo[]> {
+  const { data } = await api.get<OAuthAccountInfo[]>("/auth/me/oauth-accounts");
+  return data;
+}
+
+export async function unlinkOAuthAccount(id: string): Promise<void> {
+  await api.delete(`/auth/me/oauth-accounts/${id}`);
+}
+
 export function logout() {
   setToken(null);
 }

@@ -7,17 +7,27 @@ import {
   Input,
   InputNumber,
   Modal,
+  Popconfirm,
   Skeleton,
   Slider,
   Space,
   Tag,
+  Tooltip,
   Typography,
 } from "antd";
-import { Check, Key, SlidersHorizontal, Zap } from "lucide-react";
+import {
+  Check,
+  Key,
+  SlidersHorizontal,
+  Zap,
+  Wifi,
+  Loader2,
+} from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import {
   AIConfigSnapshot,
+  ConnectionTestResult,
   DefaultParams,
   ModelInfo,
   ProviderConfig,
@@ -26,6 +36,7 @@ import {
   saveAIDefaults,
   saveProviderConfig,
   setActiveSelection,
+  testProviderConnection,
 } from "../../ai/api/client";
 import { REGION_COLOR, REGION_LABEL } from "../../ai/constants";
 
@@ -109,6 +120,10 @@ export function AIModelSettings() {
       queryClient.invalidateQueries({ queryKey: ["ai-config"] });
     },
     onError: (e: Error) => toast.error(e.message),
+  });
+
+  const testConnectionM = useMutation({
+    mutationFn: (providerId: string) => testProviderConnection(providerId),
   });
 
   const paramsDirty =
@@ -288,6 +303,10 @@ export function AIModelSettings() {
               <Space direction="vertical" size={10} style={{ width: "100%" }}>
                 {items.map((p) => {
                   const cfg = providerConfigs.find((c) => c.provider_id === p.id);
+                  const isConfigured = !!cfg?.api_key_set;
+                  const isTesting =
+                    testConnectionM.isPending &&
+                    testConnectionM.variables === p.id;
                   return (
                     <div
                       key={p.id}
@@ -300,7 +319,7 @@ export function AIModelSettings() {
                         <div style={{ fontSize: 12, color: "#86868b", marginTop: 4 }}>{p.description}</div>
                       </div>
                       <Space direction="vertical" align="end" size={6}>
-                        {cfg?.api_key_set ? (
+                        {isConfigured ? (
                           <Tag color="success" style={{ borderRadius: 6 }}>已配置</Tag>
                         ) : (
                           <Tag style={{ borderRadius: 6 }}>未配置</Tag>
@@ -313,8 +332,26 @@ export function AIModelSettings() {
                             onClick={() => setEditingProviderId(p.id)}
                             style={{ borderRadius: 8 }}
                           >
-                            {cfg?.api_key_set ? "修改" : "配置"}
+                            {isConfigured ? "修改" : "配置"}
                           </Button>
+                          {isConfigured && (
+                            <Tooltip title="发送一个最小请求验证 Key 是否可用">
+                              <Button
+                                size="small"
+                                icon={
+                                  isTesting ? (
+                                    <Loader2 size={13} strokeWidth={1.8} className="animate-spin" />
+                                  ) : (
+                                    <Wifi size={13} strokeWidth={1.8} />
+                                  )
+                                }
+                                onClick={() => testConnectionM.mutate(p.id)}
+                                style={{ borderRadius: 8 }}
+                              >
+                                {isTesting ? "测试中" : "测试"}
+                              </Button>
+                            </Tooltip>
+                          )}
                           {p.signup_url && (
                             <Button size="small" type="link" href={p.signup_url} target="_blank" style={{ fontSize: 12 }}>
                               获取 Key
@@ -445,6 +482,79 @@ export function AIModelSettings() {
           }}
         />
       )}
+
+      {/* Test connection result modal */}
+      <Modal
+        open={!!testConnectionM.data}
+        title={
+          <Space>
+            {testConnectionM.data?.ok ? (
+              <Check size={18} color="#34c759" strokeWidth={2.4} />
+            ) : (
+              <Wifi size={18} color="#ff3b30" strokeWidth={2.4} />
+            )}
+            <span>连接测试</span>
+          </Space>
+        }
+        onCancel={() => testConnectionM.reset()}
+        footer={[
+          <Button key="ok" type="primary" onClick={() => testConnectionM.reset()}>
+            关闭
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        {testConnectionM.data && (
+          <TestResultView result={testConnectionM.data} providerName={
+            providers.find((p) => p.id === testConnectionM.variables)?.name ?? ""
+          } />
+        )}
+      </Modal>
+    </Space>
+  );
+}
+
+function TestResultView({ result, providerName }: { result: ConnectionTestResult; providerName: string }) {
+  const ok = result.ok;
+  return (
+    <Space direction="vertical" size={12} style={{ width: "100%" }}>
+      <Alert
+        type={ok ? "success" : "error"}
+        showIcon
+        message={
+          ok
+            ? `${providerName} 连接成功`
+            : `${providerName} 连接失败`
+        }
+        description={
+          <Space direction="vertical" size={4}>
+            {result.status !== null && (
+              <span>HTTP 状态：{result.status}</span>
+            )}
+            {result.model && (
+              <span>测试模型：{result.model}</span>
+            )}
+            <span>耗时：{result.latency_ms} ms</span>
+          </Space>
+        }
+        style={{ borderRadius: 10 }}
+      />
+      <div
+        style={{
+          background: ok ? "rgba(52,199,89,0.06)" : "rgba(255,59,48,0.06)",
+          border: `1px solid ${ok ? "rgba(52,199,89,0.20)" : "rgba(255,59,48,0.20)"}`,
+          borderRadius: 10,
+          padding: 12,
+          fontSize: 13,
+          color: "#1d1d1f",
+          fontFamily: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas, monospace",
+          wordBreak: "break-word",
+          maxHeight: 160,
+          overflow: "auto",
+        }}
+      >
+        {result.reply || "(无内容)"}
+      </div>
     </Space>
   );
 }

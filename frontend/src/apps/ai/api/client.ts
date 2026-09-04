@@ -173,6 +173,24 @@ export async function saveAIDefaults(payload: {
   return data;
 }
 
+export interface ConnectionTestResult {
+  ok: boolean;
+  status: number | null;
+  latency_ms: number;
+  reply: string;
+  model?: string;
+}
+
+export async function testProviderConnection(
+  providerId: string
+): Promise<ConnectionTestResult> {
+  const { data } = await api.post<ConnectionTestResult>(
+    `/ai/config/provider/${providerId}/test`,
+    {}
+  );
+  return data;
+}
+
 // ============================================================
 // Conversations
 // ============================================================
