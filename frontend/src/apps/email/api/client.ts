@@ -31,14 +31,20 @@ export interface MessageSummary {
   is_starred: boolean;
   has_attachments: boolean;
   size_bytes: number;
+  // Organization fields populated by backend's MessageSummary schema.
+  is_trashed: boolean;
+  folder_id: string | null;
+  labels: MessageLabelInfo[];
 }
 
-export interface MessageDetail extends Omit<MessageSummary, "preview"> {
+export interface MessageDetail extends Omit<MessageSummary, "preview" | "labels"> {
   rfc_message_id: string | null;
   to_addresses: string[];
   cc_addresses: string[];
   body_text: string | null;
   body_html: string | null;
+  // Backend returns labels with `id` (the embedded form on MessageRead).
+  // We accept both shapes so callers can use either id or label_id.
   labels?: Array<{ id?: string; label_id?: string; name: string; color: string }>;
   attachments: AttachmentMeta[];
 }
@@ -200,20 +206,6 @@ export async function deleteMessage(id: string): Promise<void> {
   await api.delete(`/messages/${id}`);
 }
 
-export async function sendMail(
-  mailboxId: string,
-  payload: {
-    to_addresses: string[];
-    cc_addresses?: string[];
-    subject: string;
-    body_text?: string;
-    body_html?: string;
-  }
-): Promise<{ accepted: string[]; queued_at: string; relay_mode: string }> {
-  const { data } = await api.post(`/mailboxes/${mailboxId}/send`, payload);
-  return data;
-}
-
 // ===== Draft APIs =====
 export async function listDrafts(mailboxId: string): Promise<Draft[]> {
   const { data } = await api.get<Draft[]>(`/mailboxes/${mailboxId}/drafts`);
@@ -308,15 +300,23 @@ export async function setMessageLabels(messageId: string, labelIds: string[]): P
 }
 
 // ===== Trash APIs =====
-export async function trashMessage(id: string): Promise<void> {
-  await api.post(`/messages/${id}/trash`);
+export interface TrashResult {
+  id: string;
+  is_trashed: boolean;
+  trashed_at: string | null;
 }
 
-export async function restoreMessage(id: string): Promise<void> {
-  await api.post(`/messages/${id}/restore`);
+export async function trashMessage(id: string): Promise<TrashResult> {
+  const { data } = await api.post<TrashResult>(`/messages/${id}/trash`);
+  return data;
+}
+
+export async function restoreMessage(id: string): Promise<TrashResult> {
+  const { data } = await api.post<TrashResult>(`/messages/${id}/restore`);
+  return data;
 }
 
 export async function emptyTrash(): Promise<{ deleted: number }> {
-  const { data } = await api.post<{ deleted: number }>("/trash/empty");
+  const { data } = await api.post<{ deleted: number }>('/trash/empty');
   return data;
 }

@@ -35,7 +35,7 @@ ArkNexus 采用 **BFF + 微服务** 思路：
 | 随机生成邮箱地址 | `services/email_generator.py` 形词随机组合 + 数字后缀 |
 | 接收邮件 | `smtp/server.py`（aiosmtpd Handler）监听 1025 端口 |
 | 解析邮件 | `email` 标准库 + 自定义 multipart 处理，存入数据库 + 附件落盘 |
-| 发送邮件 | `services/smtp_sender.py` 通过 SMTP 中继（开发环境可关闭或使用 MailHog） |
+| 仅收件不发送 | 故意移除 SMTP 中继；草稿仅本地记录（`DraftDrawer` 明确提示） |
 | 多邮箱切换 | 前端左侧栏一次性展示所有已创建邮箱，与 Gmail 切换账号一致 |
 | 30 天保留 | `tasks/scheduler.py` 每小时扫描 + 删除过期邮箱/邮件/附件 |
 
@@ -84,13 +84,9 @@ last_accessed_at       subject                   storage_path
   - `handle_DATA`：解析完整 RFC822 内容，写库 + 落盘附件。
 - 这是为了避免无限堆积垃圾邮件；只有当用户主动创建邮箱后，对应地址才会真正"激活"接收。
 
-### 2.5 SMTP 发送
+> **说明**：本服务**只收不发**。如需发送邮件，请用主邮箱 SMTP 客户端发送，草稿功能仅作本地记录。
 
-- 通过 `aiosmtplib` 调用外部 SMTP 中继：
-  - `SMTP_RELAY_HOST/PORT/USER/PASS` 从 `.env` 读取。
-  - 未配置时退回为 `console` 后端（仅打印日志），便于开发联调。
-
-### 2.6 数据保留
+### 2.5 数据保留
 
 - `APScheduler` 启动一个 **IntervalTrigger(hours=1)** 任务：
   1. 删除 `mailboxes.expires_at < now()` 的邮箱；
