@@ -71,6 +71,9 @@ backend/services/email-service/data/attachments/*
 # Local assistant runtime data (project memory, not source)
 .workbuddy/
 
+# Brainstorming visual companion artifacts (local-only)
+.superpowers/
+
 # Vite build artifacts
 vite.config.ts.timestamp-*.mjs
 frontend/vite.config.ts.timestamp-*.mjs
