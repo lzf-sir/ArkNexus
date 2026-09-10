@@ -124,7 +124,12 @@ export function CommandPalette() {
       width={560}
       destroyOnClose
       closable={false}
-      styles={{ body: { padding: 0 } }}
+      classNames={{ content: "glass-elevated", mask: "command-palette-mask" }}
+      styles={{
+        body: { padding: 0 },
+        content: { padding: 0, borderRadius: 18, overflow: "hidden" },
+        mask: { backdropFilter: "blur(20px)", background: "rgba(0,0,0,0.2)" },
+      }}
       style={{ top: 96 }}
     >
       <div style={{ padding: 12, borderBottom: "1px solid var(--apple-border)" }}>
