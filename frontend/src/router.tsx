@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate } from "react-router-dom";
 import { MainLayout } from "./layouts/MainLayout";
+import { PageTransition } from "./components/motion/PageTransition";
 import { DashboardPage } from "./apps/dashboard/DashboardPage";
 import { EmailApp } from "./apps/email/EmailApp";
 import { EmailInboxPage } from "./apps/email/pages/EmailInboxPage";
@@ -23,31 +24,27 @@ export const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
-      { index: true, element: <DashboardPage /> },
-      {
-        path: "email",
-        element: <EmailApp />,
-        children: [
-          { index: true, element: <EmailInboxPage /> },
-          { path: ":mailboxId", element: <EmailInboxPage /> },
-        ],
-      },
-      {
-        path: "ai",
-        children: [
-          { index: true, element: <Navigate to="ai/chat" replace /> },
-          { path: "chat", element: <AIChatPage /> },
-        ],
-      },
-      {
-        path: "settings",
-        element: <SettingsPage />,
-      },
-      {
-        path: "profile",
-        element: <ProfilePage />,
-      },
-      { path: "*", element: <Navigate to="/" replace /> },
+      { element: <PageTransition />, children: [
+        { index: true, element: <DashboardPage /> },
+        {
+          path: "email",
+          element: <EmailApp />,
+          children: [
+            { index: true, element: <EmailInboxPage /> },
+            { path: ":mailboxId", element: <EmailInboxPage /> },
+          ],
+        },
+        {
+          path: "ai",
+          children: [
+            { index: true, element: <Navigate to="chat" replace /> },
+            { path: "chat", element: <AIChatPage /> },
+          ],
+        },
+        { path: "settings", element: <SettingsPage /> },
+        { path: "profile", element: <ProfilePage /> },
+        { path: "*", element: <Navigate to="/" replace /> },
+      ]},
     ],
   },
 ]);
