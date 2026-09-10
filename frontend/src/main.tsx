@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom/client";
-import { ConfigProvider, App as AntApp, theme as antdTheme } from "antd";
+import { ConfigProvider, App as AntApp } from "antd";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "react-router-dom";
 import zhCN from "antd/locale/zh_CN";
@@ -8,8 +8,9 @@ import "antd/dist/reset.css";
 import "./index.css";
 import { router } from "./router";
 import { AuthProvider } from "./apps/auth/AuthContext";
-import { appleTheme, appleDarkTheme } from "./theme/appleTheme";
-import { ThemeProvider, useTheme } from "./theme/ThemeProvider";
+import { buildAntdTheme } from "./theme/antdTheme";
+import { ThemeProvider } from "./theme/ThemeProvider";
+import type { ThemeMode } from "./theme/tokens";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -22,23 +23,29 @@ const queryClient = new QueryClient({
 });
 
 function ThemedApp() {
-  const { resolved } = useTheme();
-  const [tick, setTick] = useState(0);
-  // The `data-theme` attribute is applied by ThemeProvider on mount and on every change.
-  // Force a small re-render after mount so ConfigProvider picks the right theme
-  // on first paint (we read the attribute from `document.documentElement`).
+  // ThemeProvider writes the resolved mode to `data-theme`. We observe that
+  // attribute (rather than threading state through context) so the ConfigProvider
+  // picks up every flip — including ones triggered by `prefers-color-scheme`
+  // changes inside ThemeProvider.
+  const [mode, setMode] = useState<ThemeMode>(() =>
+    document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
+  );
+
   useEffect(() => {
-    setTick((n) => n + 1);
-  }, [resolved]);
+    const observer = new MutationObserver(() => {
+      setMode(
+        document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
+      );
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+    return () => observer.disconnect();
+  }, []);
+
   return (
-    <ConfigProvider
-      locale={zhCN}
-      theme={{
-        ...(resolved === "dark" ? appleDarkTheme : appleTheme),
-        algorithm: resolved === "dark" ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
-      }}
-      key={tick}
-    >
+    <ConfigProvider locale={zhCN} theme={buildAntdTheme(mode)}>
       <AntApp>
         <RouterProvider router={router} />
       </AntApp>
