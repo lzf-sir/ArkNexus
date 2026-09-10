@@ -33,7 +33,7 @@
   --apple-transition: cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 
-/* Dark mode overrides. The `dark` class is toggled by ThemeContext. */
+/* Dark mode overrides. The `data-theme` attribute is set by ThemeProvider. */
 :root.dark {
   color-scheme: dark;
   --apple-blue: #0a84ff;

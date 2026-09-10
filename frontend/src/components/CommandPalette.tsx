@@ -15,7 +15,7 @@ import {
   Edit3,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useTheme, type ThemeMode } from "../theme/ThemeContext";
+import { useTheme, type Mode } from "../theme/ThemeProvider";
 
 const { Text } = Typography;
 
@@ -57,7 +57,7 @@ export function CommandPalette() {
       navigate(path);
       setOpen(false);
     };
-    const setTheme = (m: ThemeMode) => () => {
+    const setTheme = (m: Mode) => () => {
       setMode(m);
       setOpen(false);
     };

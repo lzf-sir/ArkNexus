@@ -17,7 +17,7 @@ import { Link, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useMemo, useState } from "react";
 import { App as AntApp } from "antd";
 import { useAuth } from "../apps/auth/AuthContext";
-import { useTheme, type ThemeMode } from "../theme/ThemeContext";
+import { useTheme, type Mode } from "../theme/ThemeProvider";
 import { CommandPalette } from "../components/CommandPalette";
 import { PwaInstallBanner } from "../components/PwaInstallBanner";
 import { NotificationCenter } from "../components/NotificationCenter";
@@ -76,7 +76,7 @@ export function MainLayout() {
     navigate("/login", { replace: true });
   };
 
-  const themeOptions: { key: ThemeMode; label: string; icon: React.ReactNode }[] = [
+  const themeOptions: { key: Mode; label: string; icon: React.ReactNode }[] = [
     { key: "light", label: "浅色", icon: <Sun size={14} strokeWidth={1.8} /> },
     { key: "dark", label: "深色", icon: <Moon size={14} strokeWidth={1.8} /> },
     { key: "system", label: "跟随系统", icon: <Monitor size={14} strokeWidth={1.8} /> },

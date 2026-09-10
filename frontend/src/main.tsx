@@ -9,7 +9,7 @@ import "./index.css";
 import { router } from "./router";
 import { AuthProvider } from "./apps/auth/AuthContext";
 import { appleTheme, appleDarkTheme } from "./theme/appleTheme";
-import { ThemeProvider, useTheme } from "./theme/ThemeContext";
+import { ThemeProvider, useTheme } from "./theme/ThemeProvider";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,9 +24,9 @@ const queryClient = new QueryClient({
 function ThemedApp() {
   const { resolved } = useTheme();
   const [tick, setTick] = useState(0);
-  // The `dark` class is applied by ThemeContext on mount and on every change.
+  // The `data-theme` attribute is applied by ThemeProvider on mount and on every change.
   // Force a small re-render after mount so ConfigProvider picks the right theme
-  // on first paint (we read the class from `document.documentElement`).
+  // on first paint (we read the attribute from `document.documentElement`).
   useEffect(() => {
     setTick((n) => n + 1);
   }, [resolved]);
