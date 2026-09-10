@@ -34,7 +34,7 @@
 }
 
 /* Dark mode overrides. The `data-theme` attribute is set by ThemeProvider. */
-:root.dark {
+[data-theme="dark"] {
   color-scheme: dark;
   --apple-blue: #0a84ff;
   --apple-blue-hover: #409cff;
@@ -86,27 +86,7 @@ body {
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 
-.glass-sidebar {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: saturate(180%) blur(24px);
-  -webkit-backdrop-filter: saturate(180%) blur(24px);
-}
-
-.glass-header {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-}
-
-:root.dark .glass {
-  background: rgba(28, 28, 30, 0.72);
-}
-
-:root.dark .glass-sidebar {
-  background: rgba(28, 28, 30, 0.65);
-}
-
-:root.dark .glass-header {
+[data-theme="dark"] .glass {
   background: rgba(28, 28, 30, 0.72);
 }
 
@@ -259,20 +239,20 @@ body {
   box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12) !important;
 }
 
-:root.dark .ant-input:focus,
-:root.dark .ant-input:focus-within,
-:root.dark .ant-input-affix-wrapper:focus,
-:root.dark .ant-input-affix-wrapper:focus-within {
+[data-theme="dark"] .ant-input:focus,
+[data-theme="dark"] .ant-input:focus-within,
+[data-theme="dark"] .ant-input-affix-wrapper:focus,
+[data-theme="dark"] .ant-input-affix-wrapper:focus-within {
   box-shadow: 0 0 0 3px rgba(10, 132, 255, 0.22) !important;
 }
 
 /* Markdown code styles inside message bubbles should also adapt to dark mode. */
-:root.dark .apple-msg-bubble code,
-:root.dark .apple-msg-bubble pre code {
+[data-theme="dark"] .apple-msg-bubble code,
+[data-theme="dark"] .apple-msg-bubble pre code {
   background: rgba(10, 132, 255, 0.18);
 }
 
-:root.dark .apple-msg-bubble pre {
+[data-theme="dark"] .apple-msg-bubble pre {
   background: rgba(255, 255, 255, 0.04);
 }
 
