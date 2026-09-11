@@ -263,9 +263,13 @@ export async function getConversation(id: string): Promise<ConversationRead> {
 }
 
 export async function createConversation(
-  payload: ConversationCreatePayload
+  payload?: Partial<ConversationCreatePayload>
 ): Promise<ConversationRead> {
-  const { data } = await api.post<ConversationRead>("/ai/conversations", payload);
+  const { data } = await api.post<ConversationRead>("/ai/conversations", {
+    provider_id: "",
+    model_id: "",
+    ...payload,
+  });
   return data;
 }
 
@@ -299,12 +303,11 @@ export interface ChatDelta {
   message?: string;
 }
 
-export async function streamChat(
+export async function* streamChat(
   conversationId: string,
   userText: string,
-  onEvent: (event: ChatDelta) => void,
   signal?: AbortSignal
-): Promise<void> {
+): AsyncIterable<string> {
   const token = getToken();
   const baseURL = (api.defaults.baseURL ?? "/api/v1").replace(/\/+$/, "");
   const url = `${baseURL}/ai/conversations/${conversationId}/chat`;
@@ -346,9 +349,17 @@ export async function streamChat(
       if (!data || data === "[DONE]") continue;
       try {
         const parsed: ChatDelta = JSON.parse(data);
-        onEvent(parsed);
-      } catch {
-        /* ignore */
+        if (parsed.type === "delta" && parsed.delta) {
+          yield parsed.delta;
+        } else if (parsed.type === "error") {
+          throw new Error(parsed.message ?? "Stream error");
+        }
+      } catch (e) {
+        if (e instanceof Error && e.message !== "Stream error") {
+          // Skip parse errors but propagate explicit stream errors
+        } else {
+          throw e;
+        }
       }
     }
   }

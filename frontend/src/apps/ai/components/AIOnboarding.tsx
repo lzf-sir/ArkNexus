@@ -23,16 +23,16 @@ import { REGION_COLOR, REGION_LABEL } from "../constants";
 const { Title: TitleText, Text, Paragraph } = Typography;
 
 interface Props {
-  providers: ProviderInfo[]; // catalog of supported providers
-  configuredProviderIds: string[]; // ids that have an API key set
+  providers?: ProviderInfo[]; // catalog of supported providers
+  configuredProviderIds?: string[]; // ids that have an API key set
   activeProviderId?: string;
   onUseDemoKey?: () => void;
   demoKeyAvailable?: boolean;
 }
 
 export function AIOnboarding({
-  providers,
-  configuredProviderIds,
+  providers = [],
+  configuredProviderIds = [],
   activeProviderId,
   onUseDemoKey,
   demoKeyAvailable = false,
