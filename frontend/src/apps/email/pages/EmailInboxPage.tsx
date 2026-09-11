@@ -247,6 +247,7 @@ export function EmailInboxPage() {
   const isTrashFolder = folder === "trash";
 
   return (
+    <div className="glass" style={{ padding: 12, borderRadius: 18, minHeight: "calc(100vh - 120px)" }}>
     <div className="apple-fade-in apple-email-layout" style={{ display: "flex", gap: 16, height: "calc(100vh - 104px)" }}>
       {/* Left sidebar: mailboxes + folders */}
       <Card
@@ -567,6 +568,7 @@ export function EmailInboxPage() {
           </Form.Item>
         </Form>
       </Modal>
+    </div>
     </div>
   );
 }
