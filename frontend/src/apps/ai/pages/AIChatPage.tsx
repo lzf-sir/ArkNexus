@@ -1,6 +1,6 @@
 import { App } from "antd";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ConversationSummary,
   createConversation,
@@ -21,6 +21,7 @@ export function AIChatPage() {
   const [search, setSearch] = useState("");
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
 
   const conversationsQuery = useQuery<ConversationSummary[]>({
     queryKey: ["ai-conversations", search],
@@ -86,8 +87,11 @@ export function AIChatPage() {
     setLiveMessages((prev) => [...prev, userMsg, { id: assistantId, role: "assistant", content: "" }]);
     setStreaming(true);
 
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     try {
-      const stream = streamChat(convId, text);
+      const stream = streamChat(convId, text, ctrl.signal);
       let acc = "";
       for await (const chunk of stream) {
         acc += chunk;
@@ -95,15 +99,21 @@ export function AIChatPage() {
       }
       queryClient.invalidateQueries({ queryKey: ["ai-conversations"] });
     } catch (err) {
-      toast.error("发送失败：" + (err as Error).message);
-      setLiveMessages((prev) => prev.filter((m) => m.id !== assistantId));
+      if ((err as Error).name === "AbortError") {
+        // User-initiated stop; leave partial content visible.
+      } else {
+        toast.error("发送失败：" + (err as Error).message);
+        setLiveMessages((prev) => prev.filter((m) => m.id !== assistantId));
+      }
     } finally {
       setStreaming(false);
+      abortRef.current = null;
       queryClient.invalidateQueries({ queryKey: ["ai-conversation", convId] });
     }
   };
 
   const handleStop = () => {
+    abortRef.current?.abort();
     setStreaming(false);
   };
 
