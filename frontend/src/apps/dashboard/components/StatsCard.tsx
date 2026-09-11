@@ -3,8 +3,7 @@ import { Skeleton } from "antd";
 import { motion } from "framer-motion";
 import { ReactNode } from "react";
 import type { CSSProperties } from "react";
-
-type LucideIcon = React.ComponentType<{ size?: number; strokeWidth?: number }>;
+import type { LucideIcon } from "lucide-react";
 
 interface Props {
   icon: LucideIcon;
