@@ -55,13 +55,14 @@ export function TopBar({
 
   return (
     <div
+      className="glass"
       style={{
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "10px 14px",
-        background: "#f5f5f7",
-        borderRadius: 10,
+        padding: "12px 16px",
+        borderRadius: 14,
+        margin: "0 0 16px 0",
         border: "1px solid rgba(0,0,0,0.04)",
       }}
     >
