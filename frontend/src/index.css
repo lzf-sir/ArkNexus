@@ -3,6 +3,68 @@
 @tailwind utilities;
 
 /* ============================================
+   Liquid Glass utility classes (top-level on purpose)
+   ----------------------------------------------------
+   These rules live OUTSIDE `@layer utilities` because
+   unlayered styles win the CSS cascade over layered
+   ones. If they were wrapped in @layer utilities they
+   would be overridden by Tailwind utilities that come
+   later, leaving consumers stuck with the legacy look.
+   ============================================ */
+
+/* 三层玻璃叠加 */
+.glass {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 24px rgba(31, 38, 135, 0.08);
+}
+
+.glass-elevated {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  box-shadow: 0 20px 60px rgba(31, 38, 135, 0.15);
+}
+
+.glass-tinted {
+  background: rgba(0, 122, 255, 0.12);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+}
+
+/* Hover signal — small lift + shadow bump. Framer-motion's
+   whileHover={hoverLift} will override `transform`, so this
+   rule primarily contributes the shadow enhancement. */
+.glass-hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 32px rgba(31, 38, 135, 0.14);
+}
+
+/* Dark mode */
+[data-theme="dark"] .glass {
+  background: rgba(28, 28, 30, 0.55);
+  border-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme="dark"] .glass-elevated {
+  background: rgba(28, 28, 30, 0.7);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="dark"] .glass-tinted {
+  background: rgba(10, 132, 255, 0.18);
+  border-color: rgba(10, 132, 255, 0.4);
+}
+
+[data-theme="dark"] .glass-hover {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
+/* ============================================
    Apple Design System — Global Styles
    ============================================ */
 
@@ -69,25 +131,6 @@ body {
 #root {
   display: flex;
   flex-direction: column;
-}
-
-/* ============================================
-   Frosted Glass / Backdrop Blur
-   ============================================ */
-.glass {
-  background: rgba(255, 255, 255, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-}
-
-.glass-dark {
-  background: rgba(29, 29, 31, 0.72);
-  backdrop-filter: saturate(180%) blur(20px);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-}
-
-[data-theme="dark"] .glass {
-  background: rgba(28, 28, 30, 0.72);
 }
 
 /* ============================================
@@ -385,49 +428,13 @@ body {
 }
 
 /* ============================================
-   Glass utility classes + dark mode variants
+   Layered motion utilities
+   ----------------------------------------------------
+   Glass classes live at the top level (see above) so
+   they win the cascade. This @layer utilities block
+   keeps the remaining non-conflicting motion rules.
    ============================================ */
 @layer utilities {
-  /* 三层玻璃叠加 */
-  .glass {
-    background: rgba(255, 255, 255, 0.55);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    box-shadow: 0 4px 24px rgba(31, 38, 135, 0.08);
-  }
-
-  .glass-elevated {
-    background: rgba(255, 255, 255, 0.7);
-    backdrop-filter: blur(40px) saturate(200%);
-    -webkit-backdrop-filter: blur(40px) saturate(200%);
-    box-shadow: 0 20px 60px rgba(31, 38, 135, 0.15);
-  }
-
-  .glass-tinted {
-    background: rgba(0, 122, 255, 0.12);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
-    border: 1px solid rgba(0, 122, 255, 0.3);
-  }
-
-  /* Dark mode */
-  [data-theme="dark"] .glass {
-    background: rgba(28, 28, 30, 0.55);
-    border-color: rgba(255, 255, 255, 0.1);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
-  }
-
-  [data-theme="dark"] .glass-elevated {
-    background: rgba(28, 28, 30, 0.7);
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  }
-
-  [data-theme="dark"] .glass-tinted {
-    background: rgba(10, 132, 255, 0.18);
-    border-color: rgba(10, 132, 255, 0.4);
-  }
-
   /* 全局颜色过渡（主题切换） */
   :root {
     transition: background-color 350ms cubic-bezier(0.25, 0.1, 0.25, 1),

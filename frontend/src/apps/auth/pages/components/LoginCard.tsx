@@ -1,9 +1,10 @@
-import { App, Button, Divider, Form, Input, Space, Tabs, Typography } from "antd";
+import { App, Divider, Form, Input, Space, Tabs, Typography } from "antd";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useAuth } from "../../AuthContext";
 import { OAuthButtonRow } from "./OAuthButtonRow";
+import { GlassButton } from "@/components/glass/GlassButton";
 
 const { Title, Paragraph } = Typography;
 
@@ -188,16 +189,15 @@ export function LoginCard({ configuredProviders }: Props) {
           )}
 
           <Form.Item style={{ marginTop: errorMsg ? 12 : 4, marginBottom: 0 }}>
-            <Button
+            <GlassButton
               block
-              type="primary"
-              htmlType="submit"
+              variant="primary"
+              type="submit"
               loading={submitting}
-              size="large"
-              style={{ borderRadius: 999, height: 48, fontSize: 16, fontWeight: 600 }}
+              style={{ height: 48, fontSize: 16 }}
             >
               {mode === "login" ? "登录" : "注册"}
-            </Button>
+            </GlassButton>
           </Form.Item>
         </Form>
 
